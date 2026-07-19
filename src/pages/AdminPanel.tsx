@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { apiFetch, API_ENDPOINTS } from '@/config/api';
+import type { FeatureDefinition } from '@/types/feature';
 import {
   Users,
   BarChart3,
@@ -73,7 +74,44 @@ interface AdminUser {
   };
 }
 
-type Tab = 'dashboard' | 'users' | 'email' | 'invoices' | 'plans' | 'promos' | 'demos' | 'deletions' | 'services' | 'influencers' | 'transactions';
+type Tab = 'dashboard' | 'users' | 'email' | 'invoices' | 'plans' | 'features' | 'promos' | 'demos' | 'deletions' | 'services' | 'influencers' | 'transactions';
+
+/* ─── Feature registry (dynamic service list) ─── */
+// Compiled-in fallback used only while the registry hasn't loaded / errors.
+const FALLBACK_SERVICES: FeatureDefinition[] = [
+  { key: 'whatsapp',     name: 'WhatsApp Sender',   isActive: true },
+  { key: 'whatsapp_bot', name: 'WhatsApp AI Bot',   isActive: true },
+  { key: 'chatbot',      name: 'Website Chatbot',   isActive: true },
+  { key: 'email',        name: 'Email Marketing',   isActive: true },
+  { key: 'facebook',     name: 'Facebook',          isActive: true },
+  { key: 'linkedin',     name: 'LinkedIn Publisher', isActive: true },
+  { key: 'linkedin_bot', name: 'LinkedIn AI Bot',   isActive: true },
+  { key: 'seo',          name: 'SEO Manager',       isActive: true },
+  { key: 'seo_bot',      name: 'SEO AI Bot',        isActive: true },
+  { key: 'leads',        name: 'Leads Manager',     isActive: true },
+];
+
+let featureCache: FeatureDefinition[] | null = null;
+
+async function fetchAdminFeatures(force = false): Promise<FeatureDefinition[]> {
+  if (featureCache && !force) return featureCache;
+  try {
+    const res = await apiFetch(API_ENDPOINTS.admin.features);
+    const data = await res.json();
+    if (data.success && Array.isArray(data.data) && data.data.length > 0) {
+      featureCache = data.data;
+    }
+  } catch { /* keep fallback */ }
+  return featureCache ?? FALLBACK_SERVICES;
+}
+
+/** Feature registry list for admin UIs, with a hardcoded fallback. */
+function useAdminFeatures() {
+  const [features, setFeatures] = useState<FeatureDefinition[]>(featureCache ?? FALLBACK_SERVICES);
+  useEffect(() => { fetchAdminFeatures().then(setFeatures); }, []);
+  const reload = useCallback(async () => setFeatures(await fetchAdminFeatures(true)), []);
+  return { features, reload };
+}
 
 interface Invoice {
   id: string;
@@ -316,6 +354,7 @@ function EditUserModal({ open, user, onClose, onUpdated }: {
   const [planOptions, setPlanOptions] = useState<PlanConfigData[]>([]);
 
   // Add-on grant state
+  const { features: grantableServices } = useAdminFeatures();
   const [grantedServices, setGrantedServices] = useState<Set<string>>(new Set());
   const [svcSaving, setSvcSaving] = useState(false);
   const [svcMsg, setSvcMsg] = useState('');
@@ -523,17 +562,7 @@ function EditUserModal({ open, user, onClose, onUpdated }: {
             <Zap size={14} className="text-violet-500" /> Grant Add-ons (no payment)
           </p>
           <div className="grid grid-cols-2 gap-2 mb-3">
-            {[
-              { id: 'whatsapp',     label: 'WhatsApp Sender' },
-              { id: 'whatsapp_bot', label: 'WhatsApp AI Bot' },
-              { id: 'email',        label: 'Email Marketing' },
-              { id: 'chatbot',      label: 'Website Chatbot' },
-              { id: 'facebook',     label: 'Facebook' },
-              { id: 'linkedin',     label: 'LinkedIn Publisher' },
-              { id: 'linkedin_bot', label: 'LinkedIn AI Bot' },
-              { id: 'seo',          label: 'SEO Manager' },
-              { id: 'seo_bot',      label: 'SEO AI Bot' },
-            ].map(({ id, label }) => {
+            {grantableServices.map(({ key: id, name: label }) => {
               const active = grantedServices.has(id);
               return (
                 <button
@@ -1253,18 +1282,6 @@ function InvoicesTab() {
 }
 
 /* ─── Plans Tab ─── */
-const ALL_SERVICES = [
-  'whatsapp',     // WhatsApp bulk send
-  'whatsapp_bot', // WhatsApp AI auto-reply bot
-  'chatbot',      // Website chatbot widget
-  'email',        // Email bulk send
-  'facebook',     // Facebook posting
-  'linkedin',     // LinkedIn connect + manual posts
-  'linkedin_bot', // LinkedIn automation bot + AI images
-  'seo',          // SEO dashboard / pages / vitals (basic)
-  'seo_bot',      // SEO auto-fix bot + blog bot (premium)
-] as const;
-
 interface PlanFormState {
   plan: string;
   name: string;
@@ -1314,6 +1331,7 @@ const formFromPlan = (p: PlanConfigData): PlanFormState => ({
 });
 
 function PlansTab() {
+  const { features: registryFeatures } = useAdminFeatures();
   const [plans, setPlans] = useState<PlanConfigData[]>([]);
   const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState<{ mode: 'create' | 'edit'; form: PlanFormState } | null>(null);
@@ -1583,22 +1601,25 @@ function PlansTab() {
               <div>
                 <label className="block text-xs font-medium text-gray-600 mb-2">Services included</label>
                 <div className="flex flex-wrap gap-x-4 gap-y-2">
-                  {ALL_SERVICES.map(svc => (
-                    <label key={svc} className="flex items-center gap-1.5 text-sm">
-                      <input type="checkbox" checked={editing.form.services.includes(svc)}
+                  {registryFeatures.map(f => (
+                    <label key={f.key} className="flex items-center gap-1.5 text-sm" title={f.name}>
+                      <input type="checkbox" checked={editing.form.services.includes(f.key)}
                         onChange={e => setEditing(s => s && ({
                           ...s,
                           form: {
                             ...s.form,
                             services: e.target.checked
-                              ? [...s.form.services, svc]
-                              : s.form.services.filter(x => x !== svc),
+                              ? [...s.form.services, f.key]
+                              : s.form.services.filter(x => x !== f.key),
                           },
                         }))} />
-                      {svc}
+                      {f.key}
                     </label>
                   ))}
                 </div>
+                <p className="text-[11px] text-gray-400 mt-1.5">
+                  Missing a service? Register it in the <span className="font-medium">Features</span> tab first.
+                </p>
               </div>
               <div>
                 <label className="block text-xs font-medium text-gray-600 mb-1">Features (one per line)</label>
@@ -2807,6 +2828,259 @@ function InfluencersTab() {
   );
 }
 
+/* ─── Features Tab (dynamic feature registry) ─── */
+interface FeatureFormState {
+  key: string;
+  name: string;
+  description: string;
+  group: string;
+  displayOrder: string;
+  isActive: boolean;
+  monthlyPrice: string;
+}
+
+const emptyFeatureForm = (): FeatureFormState => ({
+  key: '', name: '', description: '', group: '', displayOrder: '0', isActive: true, monthlyPrice: '',
+});
+
+function FeaturesTab() {
+  const { features, reload } = useAdminFeatures();
+  const [editing, setEditing] = useState<{ mode: 'create' | 'edit'; form: FeatureFormState } | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [successMsg, setSuccessMsg] = useState<string | null>(null);
+
+  const startCreate = () => { setError(null); setEditing({ mode: 'create', form: emptyFeatureForm() }); };
+  const startEdit = (f: FeatureDefinition) => {
+    setError(null);
+    setEditing({
+      mode: 'edit',
+      form: {
+        key: f.key,
+        name: f.name,
+        description: f.description ?? '',
+        group: f.group ?? '',
+        displayOrder: String(f.displayOrder ?? 0),
+        isActive: f.isActive,
+        monthlyPrice: '',
+      },
+    });
+  };
+
+  const submitForm = async () => {
+    if (!editing) return;
+    const f = editing.form;
+    if (!f.key.trim()) { setError('Feature key is required'); return; }
+    if (!f.name.trim()) { setError('Name is required'); return; }
+
+    const body: Record<string, unknown> = {
+      key: f.key.trim().toLowerCase(),
+      name: f.name.trim(),
+      description: f.description,
+      group: f.group,
+      displayOrder: parseInt(f.displayOrder) || 0,
+      isActive: f.isActive,
+    };
+    if (editing.mode === 'create' && parseFloat(f.monthlyPrice) > 0) {
+      body.monthlyPrice = parseFloat(f.monthlyPrice);
+    }
+
+    setSaving(true);
+    setError(null);
+    try {
+      const url = editing.mode === 'create'
+        ? API_ENDPOINTS.admin.features
+        : API_ENDPOINTS.admin.feature(f.key);
+      const res = await apiFetch(url, {
+        method: editing.mode === 'create' ? 'POST' : 'PUT',
+        body: JSON.stringify(body),
+      });
+      const data = await res.json();
+      if (!data.success) { setError(data.error || 'Failed to save feature'); return; }
+      await reload();
+      setSuccessMsg(editing.mode === 'create'
+        ? `Feature "${body.key}" registered${body.monthlyPrice ? ` with ${f.key} / ${f.key}_yr plans at ₹${body.monthlyPrice}/mo` : ''}.`
+        : `Feature "${f.key}" updated.`);
+      setEditing(null);
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : 'Failed to save feature');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const toggleActive = async (f: FeatureDefinition) => {
+    try {
+      const res = await apiFetch(API_ENDPOINTS.admin.feature(f.key), {
+        method: 'PUT',
+        body: JSON.stringify({ isActive: !f.isActive }),
+      });
+      const data = await res.json();
+      if (data.success) reload();
+      else alert(data.error || 'Failed to update feature');
+    } catch { alert('Failed to update feature'); }
+  };
+
+  const deleteFeature = async (f: FeatureDefinition) => {
+    if (!confirm(`Delete feature "${f.key}"? Plans that include it must drop it first.`)) return;
+    try {
+      const res = await apiFetch(API_ENDPOINTS.admin.feature(f.key), { method: 'DELETE' });
+      const data = await res.json();
+      if (!data.success) { alert(data.error || 'Failed to delete'); return; }
+      reload();
+    } catch { alert('Failed to delete feature'); }
+  };
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-lg font-semibold text-gray-900">Features</h2>
+          <p className="text-sm text-gray-500">
+            The feature registry — every sellable service on the platform. Register a feature here, then price it via plans (or set a monthly price to auto-create them).
+          </p>
+        </div>
+        <button onClick={startCreate}
+          className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white text-sm font-medium rounded-lg">
+          + Register Feature
+        </button>
+      </div>
+
+      {successMsg && (
+        <div className="p-3 bg-green-50 border border-green-200 text-green-800 text-sm rounded-lg flex items-center justify-between">
+          <span>{successMsg}</span>
+          <button onClick={() => setSuccessMsg(null)} className="ml-3 opacity-60 hover:opacity-100 text-lg leading-none">×</button>
+        </div>
+      )}
+
+      <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+        <table className="w-full text-sm">
+          <thead className="bg-gray-50 text-gray-600 text-xs uppercase">
+            <tr>
+              <th className="px-3 py-2 text-left">Order</th>
+              <th className="px-3 py-2 text-left">Key</th>
+              <th className="px-3 py-2 text-left">Name</th>
+              <th className="px-3 py-2 text-left">Group</th>
+              <th className="px-3 py-2 text-left">Description</th>
+              <th className="px-3 py-2 text-center">Active</th>
+              <th className="px-3 py-2 text-right">Actions</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-gray-100">
+            {features.map(f => (
+              <tr key={f.key} className="hover:bg-gray-50">
+                <td className="px-3 py-2 text-gray-500">{f.displayOrder ?? 0}</td>
+                <td className="px-3 py-2 font-mono text-xs text-gray-700">
+                  {f.key}
+                  {f.isBuiltIn && <span className="ml-1.5 text-[10px] px-1.5 py-0.5 bg-gray-100 text-gray-500 rounded">built-in</span>}
+                </td>
+                <td className="px-3 py-2 text-gray-900">{f.name}</td>
+                <td className="px-3 py-2 text-xs text-gray-600">{f.group || '—'}</td>
+                <td className="px-3 py-2 text-xs text-gray-500 max-w-xs truncate">{f.description || '—'}</td>
+                <td className="px-3 py-2 text-center">
+                  <button onClick={() => toggleActive(f)}
+                    className={`w-10 h-5 rounded-full ${f.isActive ? 'bg-green-500' : 'bg-gray-300'} relative transition-colors`}>
+                    <span className={`absolute top-0.5 w-4 h-4 bg-white rounded-full transition-all ${f.isActive ? 'left-5' : 'left-0.5'}`} />
+                  </button>
+                </td>
+                <td className="px-3 py-2 text-right whitespace-nowrap">
+                  <button onClick={() => startEdit(f)} className="p-1.5 text-gray-400 hover:text-blue-600" title="Edit">
+                    <Pencil size={14} />
+                  </button>
+                  {!f.isBuiltIn && (
+                    <button onClick={() => deleteFeature(f)} className="p-1.5 text-gray-400 hover:text-red-600" title="Delete">
+                      <Trash2 size={14} />
+                    </button>
+                  )}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      {editing && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl shadow-xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
+              <h3 className="font-semibold text-gray-900">
+                {editing.mode === 'create' ? 'Register Feature' : `Edit Feature — ${editing.form.key}`}
+              </h3>
+              <button onClick={() => setEditing(null)} className="text-gray-400 hover:text-gray-600"><X size={18} /></button>
+            </div>
+            <div className="p-6 space-y-4">
+              {error && <div className="p-3 bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg">{error}</div>}
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-medium text-gray-600 mb-1">Feature key</label>
+                  <input type="text" value={editing.form.key} disabled={editing.mode === 'edit'}
+                    placeholder="e.g. leads, instagram"
+                    onChange={e => setEditing(s => s && ({ ...s, form: { ...s.form, key: e.target.value } }))}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm font-mono disabled:bg-gray-50 disabled:text-gray-500" />
+                  <p className="text-[11px] text-gray-400 mt-1">Lowercase letters, digits, underscores. Used as the service key on plans.</p>
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-600 mb-1">Name</label>
+                  <input type="text" value={editing.form.name}
+                    placeholder="e.g. Leads Manager"
+                    onChange={e => setEditing(s => s && ({ ...s, form: { ...s.form, name: e.target.value } }))}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm" />
+                </div>
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-600 mb-1">Description</label>
+                <input type="text" value={editing.form.description}
+                  onChange={e => setEditing(s => s && ({ ...s, form: { ...s.form, description: e.target.value } }))}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm" />
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-medium text-gray-600 mb-1">Group</label>
+                  <input type="text" value={editing.form.group}
+                    placeholder="messaging / social / web / growth"
+                    onChange={e => setEditing(s => s && ({ ...s, form: { ...s.form, group: e.target.value } }))}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm" />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-600 mb-1">Display order</label>
+                  <input type="number" step="1" value={editing.form.displayOrder}
+                    onChange={e => setEditing(s => s && ({ ...s, form: { ...s.form, displayOrder: e.target.value } }))}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm" />
+                </div>
+              </div>
+              {editing.mode === 'create' && (
+                <div>
+                  <label className="block text-xs font-medium text-gray-600 mb-1">Monthly price (₹, optional)</label>
+                  <input type="number" min="0" step="1" value={editing.form.monthlyPrice}
+                    placeholder="e.g. 99"
+                    onChange={e => setEditing(s => s && ({ ...s, form: { ...s.form, monthlyPrice: e.target.value } }))}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm" />
+                  <p className="text-[11px] text-gray-400 mt-1">
+                    If set, "{editing.form.key || 'key'}" (monthly) and "{editing.form.key || 'key'}_yr" (yearly, 20% off) plans are created automatically.
+                  </p>
+                </div>
+              )}
+              <label className="flex items-center gap-2 text-sm">
+                <input type="checkbox" checked={editing.form.isActive}
+                  onChange={e => setEditing(s => s && ({ ...s, form: { ...s.form, isActive: e.target.checked } }))} />
+                Active (shown in the public pricing catalog)
+              </label>
+            </div>
+            <div className="flex justify-end gap-3 px-6 py-4 border-t border-gray-100">
+              <button onClick={() => setEditing(null)}
+                className="px-4 py-2 text-sm text-gray-600 hover:text-gray-900">Cancel</button>
+              <button onClick={submitForm} disabled={saving}
+                className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white text-sm font-medium rounded-lg disabled:opacity-50">
+                {saving ? 'Saving…' : editing.mode === 'create' ? 'Register' : 'Save changes'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 /* ─── Service Availability Tab ─── */
 const SVC_LABELS: Record<string, { label: string; desc: string }> = {
   whatsapp:     { label: 'WhatsApp Sender',  desc: 'Bulk messaging at scale' },
@@ -2818,6 +3092,7 @@ const SVC_LABELS: Record<string, { label: string; desc: string }> = {
   linkedin_bot: { label: 'LinkedIn AI Bot',  desc: 'Automated AI posting' },
   seo:          { label: 'SEO Manager',      desc: 'Audit & health tracking' },
   seo_bot:      { label: 'SEO AI Bot',       desc: 'AI blog & recommendations' },
+  leads:        { label: 'Leads Manager',    desc: 'Scrape & enrich local leads' },
 };
 
 interface ServiceStatus {
@@ -2827,6 +3102,7 @@ interface ServiceStatus {
 }
 
 function ServiceAvailabilityTab() {
+  const { features: registryFeatures } = useAdminFeatures();
   const [services, setServices] = useState<ServiceStatus[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState<string | null>(null);
@@ -2872,7 +3148,9 @@ function ServiceAvailabilityTab() {
       </p>
       <div className="space-y-3">
         {services.map(svc => {
-          const meta = SVC_LABELS[svc.service];
+          const registered = registryFeatures.find(f => f.key === svc.service);
+          const meta = SVC_LABELS[svc.service]
+            ?? (registered ? { label: registered.name, desc: registered.description ?? '' } : undefined);
           return (
             <div
               key={svc.service}
@@ -3136,6 +3414,7 @@ export function AdminPanel() {
     { id: 'transactions', label: 'Purchase Logs', icon: Receipt },
     { id: 'invoices', label: 'Invoices', icon: FileText },
     { id: 'plans', label: 'Plans', icon: Settings },
+    { id: 'features', label: 'Features', icon: Zap },
     { id: 'promos', label: 'Promos', icon: Tag },
     { id: 'email', label: 'Email', icon: Mail },
     { id: 'demos', label: 'Chatbot Demos', icon: Bot },
@@ -3195,6 +3474,7 @@ export function AdminPanel() {
         {tab === 'transactions' && <TransactionsTab />}
         {tab === 'invoices' && <InvoicesTab />}
         {tab === 'plans' && <PlansTab />}
+        {tab === 'features' && <FeaturesTab />}
         {tab === 'promos' && <PromosTab />}
         {tab === 'email' && <EmailTab />}
         {tab === 'demos' && <ChatbotDemosTab />}

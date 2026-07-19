@@ -8,6 +8,7 @@ interface SentEmailLog {
   subject: string;
   body: string;
   provider: 'hostinger' | 'smtp';
+  source?: string; // "" (Email channel) | "leads_autopilot"
   sentAt: string;
 }
 
@@ -197,9 +198,16 @@ export function EmailSentPage({ isPaid }: { isPaid: boolean }) {
                   <h4 className="text-xs truncate mb-1.5 font-semibold text-gray-900">
                     {log.subject || '(no subject)'}
                   </h4>
-                  <span className={`inline-flex items-center px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wider rounded border ${PROVIDER_STYLES[log.provider] || PROVIDER_STYLES.smtp}`}>
-                    {log.provider === 'hostinger' ? 'Hostinger' : 'SMTP'}
-                  </span>
+                  <div className="flex items-center gap-1.5">
+                    <span className={`inline-flex items-center px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wider rounded border ${PROVIDER_STYLES[log.provider] || PROVIDER_STYLES.smtp}`}>
+                      {log.provider === 'hostinger' ? 'Hostinger' : 'SMTP'}
+                    </span>
+                    {log.source === 'leads_autopilot' && (
+                      <span className="inline-flex items-center px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wider rounded border bg-amber-50 text-amber-700 border-amber-200">
+                        Autopilot
+                      </span>
+                    )}
+                  </div>
                 </div>
               ))}
               {logs.length < total && (

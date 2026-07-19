@@ -51,6 +51,7 @@ const SetupPage = lazy(() => import('./pages/SetupPage').then(m => ({ default: m
 const DataDeletionPage = lazy(() => import('./pages/DataDeletionPage').then(m => ({ default: m.DataDeletionPage })))
 const FacebookPage = lazy(() => import('./pages/facebook/FacebookPage').then(m => ({ default: m.FacebookPage })))
 const FacebookCallbackPage = lazy(() => import('./pages/facebook/FacebookCallbackPage').then(m => ({ default: m.FacebookCallbackPage })))
+const GmailCallbackPage = lazy(() => import('./pages/email/GmailCallbackPage').then(m => ({ default: m.GmailCallbackPage })))
 const LinkedInPage = lazy(() => import('./pages/linkedin/LinkedInPage').then(m => ({ default: m.LinkedInPage })))
 const LinkedInApprovePage = lazy(() => import('./pages/linkedin/LinkedInApprovePage').then(m => ({ default: m.LinkedInApprovePage })))
 const SEOPage = lazy(() => import('./pages/seo/SEOPage').then(m => ({ default: m.SEOPage })))
@@ -236,6 +237,9 @@ function AppRoutes() {
       } />
       <Route path="/facebook/callback" element={
         <ProtectedRoute><FacebookCallbackPage /></ProtectedRoute>
+      } />
+      <Route path="/email/gmail/callback" element={
+        <ProtectedRoute><GmailCallbackPage /></ProtectedRoute>
       } />
 
       {/* LinkedIn channel */}

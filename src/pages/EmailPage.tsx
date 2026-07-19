@@ -1,7 +1,7 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import {
-  Mail, Send, CalendarClock, FileText, Bot, Settings, History,
+  Mail, Send, CalendarClock, FileText, Bot, Settings, History, Sparkles,
   ArrowLeft, Crown, LogOut, User, Zap, MessageSquare, Menu, X
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
@@ -12,25 +12,31 @@ import { EmailTemplatePage } from './email/EmailTemplatePage';
 import { EmailBotPage } from './email/EmailBotPage';
 import { EmailInboxPage } from './email/EmailInboxPage';
 import { EmailSentPage } from './email/EmailSentPage';
+import { EmailSummarizerPage } from './email/EmailSummarizerPage';
 
-type Tab = 'inbox' | 'compose' | 'schedule' | 'sent' | 'templates' | 'bot' | 'smtp';
+type Tab = 'inbox' | 'compose' | 'schedule' | 'sent' | 'summarizer' | 'templates' | 'bot' | 'smtp';
 
 const NAV_ITEMS: { id: Tab; label: string; icon: React.ReactNode; desc: string }[] = [
-  { id: 'inbox',     label: 'Inbox',     icon: <Mail size={20} />,         desc: 'Check messages' },
-  { id: 'compose',   label: 'Send',      icon: <Send size={20} />,         desc: 'Bulk campaigns' },
-  { id: 'schedule',  label: 'Scheduled', icon: <CalendarClock size={20} />, desc: 'Queued jobs'     },
-  { id: 'sent',      label: 'Sent',      icon: <History size={20} />,       desc: 'Sent history'   },
-  { id: 'templates', label: 'Templates', icon: <FileText size={20} />,      desc: 'HTML library'   },
-  { id: 'bot',       label: 'Bot',       icon: <Bot size={20} />,           desc: 'Auto-reply AI'  },
-  { id: 'smtp',      label: 'SMTP',      icon: <Settings size={20} />,      desc: 'Connection'     },
+  { id: 'inbox',       label: 'Inbox',       icon: <Mail size={20} />,          desc: 'Check messages' },
+  { id: 'compose',     label: 'Send',        icon: <Send size={20} />,          desc: 'Bulk campaigns' },
+  { id: 'schedule',    label: 'Scheduled',   icon: <CalendarClock size={20} />, desc: 'Queued jobs'     },
+  { id: 'sent',        label: 'Sent',        icon: <History size={20} />,       desc: 'Sent history'   },
+  { id: 'summarizer',  label: 'Summarizer',  icon: <Sparkles size={20} />,      desc: 'Daily AI digest' },
+  { id: 'templates',   label: 'Templates',   icon: <FileText size={20} />,      desc: 'HTML library'   },
+  { id: 'bot',         label: 'Bot',         icon: <Bot size={20} />,           desc: 'Auto-reply AI'  },
+  { id: 'smtp',        label: 'SMTP',        icon: <Settings size={20} />,      desc: 'Connection'     },
 ];
 
 const TAB_LABELS: Record<Tab, string> = {
-  inbox: 'Inbox Messages', compose: 'Send Email', schedule: 'Scheduled', sent: 'Sent Emails', templates: 'Templates', bot: 'Email Bot', smtp: 'SMTP Setup',
+  inbox: 'Inbox Messages', compose: 'Send Email', schedule: 'Scheduled', sent: 'Sent Emails', summarizer: 'Email Summarizer', templates: 'Templates', bot: 'Email Bot', smtp: 'SMTP Setup',
 };
 
+const VALID_TABS: Tab[] = ['inbox', 'compose', 'schedule', 'sent', 'summarizer', 'templates', 'bot', 'smtp'];
+
 export function EmailPage() {
-  const [tab, setTab] = useState<Tab>('inbox');
+  const [searchParams] = useSearchParams();
+  const initialTab = VALID_TABS.includes(searchParams.get('tab') as Tab) ? (searchParams.get('tab') as Tab) : 'inbox';
+  const [tab, setTab] = useState<Tab>(initialTab);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const { user, logout } = useAuth();
   const navigate = useNavigate();
@@ -200,6 +206,7 @@ export function EmailPage() {
           {tab === 'compose'   && <EmailComposePage isPaid={isPaid} />}
           {tab === 'schedule'  && <EmailSchedulePage isPaid={isPaid} />}
           {tab === 'sent'      && <EmailSentPage isPaid={isPaid} />}
+          {tab === 'summarizer' && <EmailSummarizerPage isPaid={isPaid} />}
           {tab === 'templates' && <EmailTemplatePage isPaid={isPaid} />}
           {tab === 'bot'       && <EmailBotPage isPaid={isPaid} />}
           {tab === 'smtp'      && <EmailSMTPPage isPaid={isPaid} />}

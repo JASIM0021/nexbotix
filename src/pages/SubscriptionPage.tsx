@@ -3,6 +3,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { API_ENDPOINTS, apiFetch } from '@/config/api';
 import { Check, Zap, ArrowLeft, Loader2, CreditCard, Calendar, Tag, X, Code, Copy, ChevronDown, ChevronUp, Trash2, Plus, ExternalLink, MessageSquare, Bot, Mail, MessageCircle, Facebook, Search, Sparkles } from 'lucide-react';
 import { useNavigate, useLocation, Link } from 'react-router-dom';
+import type { FeatureDefinition } from '@/types/feature';
 
 // ─── Add-on pricing metadata ──────────────────────────────────────────────────
 
@@ -33,6 +34,10 @@ const SVC_TO_PLAN: Record<string, string> = {
   linkedin_bot: 'li_bot', seo: 'seo', seo_bot: 'seo_bot', leads: 'leads',
 };
 
+// Admin-registered features follow the "<key>" / "<key>_yr" plan convention,
+// so unknown service keys fall back to the key itself as the plan ID.
+const svcToPlan = (id: string) => SVC_TO_PLAN[id] ?? id;
+
 // Display groups — LinkedIn & SEO each collapse their sub-bot into one card
 const SVC_GROUPS = [
   { ids: ['whatsapp'],                  label: 'WhatsApp Sender', desc: 'Bulk messaging at scale',    colorBg: 'bg-green-500',   icon: 'MessageSquare', subLabels: [] as string[] },
@@ -53,7 +58,7 @@ function matchBestPlan(sel: Set<string>, cycle: 'monthly' | 'yearly', pricing: L
   if (!sel.size) return null;
 
   if (sel.size === 1) {
-    const pid = SVC_TO_PLAN[selArr[0]] + suffix;
+    const pid = svcToPlan(selArr[0]) + suffix;
     const p = pricing?.[pid];
     return p ? { planId: pid, name: p.name, price: p.amount, isExact: true, savingsPct: null, extras: [] } : null;
   }
@@ -521,6 +526,24 @@ export function SubscriptionPage() {
   const [billingCycle, setBillingCycle] = useState<'monthly' | 'yearly'>('monthly');
   const [selectedServices, setSelectedServices] = useState<Set<string>>(new Set());
   const [unavailableServices, setUnavailableServices] = useState<Set<string>>(new Set());
+  const [catalogFeatures, setCatalogFeatures] = useState<FeatureDefinition[] | null>(null);
+
+  // Merge the static display groups with the live feature catalog: features the
+  // admin registered after this build get a generic card; deactivated built-in
+  // features drop off. Falls back to the static list until the catalog loads.
+  const svcGroups = (() => {
+    if (!catalogFeatures || catalogFeatures.length === 0) return SVC_GROUPS;
+    const activeKeys = new Set(catalogFeatures.map(f => f.key));
+    const knownIds = new Set<string>(SVC_META.map(m => m.id));
+    const staticGroups = SVC_GROUPS.filter(g => g.ids.some(id => activeKeys.has(id)));
+    const dynamicGroups = catalogFeatures
+      .filter(f => !knownIds.has(f.key))
+      .map(f => ({
+        ids: [f.key], label: f.name, desc: f.description ?? '',
+        colorBg: 'bg-slate-600', icon: 'Sparkles', subLabels: [] as string[],
+      }));
+    return [...staticGroups, ...dynamicGroups];
+  })();
 
   const toggleGroup = (ids: string[]) => setSelectedServices(prev => {
     const n = new Set(prev);
@@ -567,6 +590,11 @@ export function SubscriptionPage() {
           setUnavailableServices(unavail);
         }
       })
+      .catch(() => {});
+    // Live feature catalog — surfaces admin-registered features on the pricing page
+    fetch(API_ENDPOINTS.services.catalog)
+      .then(r => r.json())
+      .then(data => { if (data.success && Array.isArray(data.data)) setCatalogFeatures(data.data); })
       .catch(() => {});
     // Detect user's currency — support ?testCurrency=US for local dev testing
     const testCountry = new URLSearchParams(window.location.search).get('testCurrency');
@@ -838,7 +866,7 @@ export function SubscriptionPage() {
         {(() => {
           const bestPlan = matchBestPlan(selectedServices, billingCycle, livePricing);
           const rawTotal = Array.from(selectedServices).reduce((sum, svc) => {
-            const pid = SVC_TO_PLAN[svc] + (billingCycle === 'yearly' ? '_yr' : '');
+            const pid = svcToPlan(svc) + (billingCycle === 'yearly' ? '_yr' : '');
             return sum + (livePricing?.[pid]?.amount ?? (billingCycle === 'yearly' ? 950 : 99));
           }, 0);
           const isExactCombo = bestPlan?.isExact ?? false;
@@ -893,9 +921,9 @@ export function SubscriptionPage() {
                   Add-ons · {formatPrice(billingCycle === 'yearly' ? 950 : 99)}/{billingCycle === 'yearly' ? 'yr' : 'mo'} each
                 </p>
                 <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
-                  {SVC_GROUPS.map(g => {
+                  {svcGroups.map(g => {
                     const groupPrice = g.ids.reduce((sum, id) => {
-                      const planId = SVC_TO_PLAN[id] + (billingCycle === 'yearly' ? '_yr' : '');
+                      const planId = svcToPlan(id) + (billingCycle === 'yearly' ? '_yr' : '');
                       return sum + (livePricing?.[planId]?.amount ?? (billingCycle === 'yearly' ? 950 : 99));
                     }, 0);
                     const isGroupSel = g.ids.every(id => selectedServices.has(id));
@@ -1047,7 +1075,7 @@ export function SubscriptionPage() {
                       {/* Left: selection info */}
                       <div className="flex-1 min-w-0">
                         <div className="flex flex-wrap items-center gap-1.5 mb-1">
-                          {SVC_GROUPS.filter(g => g.ids.some(id => selectedServices.has(id))).map(g => (
+                          {svcGroups.filter(g => g.ids.some(id => selectedServices.has(id))).map(g => (
                             <button
                               key={g.ids.join('+')}
                               onClick={() => toggleGroup(g.ids)}

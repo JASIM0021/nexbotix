@@ -87,9 +87,12 @@ export const API_ENDPOINTS = {
     promo: (id: string) => `${API_BASE_URL}/api/admin/promos/${id}`,
     serviceAvailability: `${API_BASE_URL}/api/admin/services/availability`,
     transactions: `${API_BASE_URL}/api/admin/transactions`,
+    features: `${API_BASE_URL}/api/admin/features`,
+    feature: (key: string) => `${API_BASE_URL}/api/admin/features/${key}`,
   },
   services: {
     availability: `${API_BASE_URL}/api/services/availability`,
+    catalog: `${API_BASE_URL}/api/services/catalog`,
   },
   contacts: {
     list: `${API_BASE_URL}/api/contacts`,
@@ -145,6 +148,12 @@ export const API_ENDPOINTS = {
     sentHostinger: `${API_BASE_URL}/api/email/sent/hostinger`,
     sentHostingerMessage: (uid: number) => `${API_BASE_URL}/api/email/sent/hostinger/message/${uid}`,
     uploadDeck: `${API_BASE_URL}/api/email/deck`,
+    summarizer: `${API_BASE_URL}/api/email/summarizer`,
+    summarizerRunNow: `${API_BASE_URL}/api/email/summarizer/run-now`,
+    gmailOAuthUrl: `${API_BASE_URL}/api/email/gmail/oauth-url`,
+    gmailExchangeCode: `${API_BASE_URL}/api/email/gmail/exchange-code`,
+    gmailStatus: `${API_BASE_URL}/api/email/gmail/status`,
+    gmailDisconnect: `${API_BASE_URL}/api/email/gmail/disconnect`,
   },
   // ── Facebook (Omnichannel) ────────────────────────────────────────────
   facebook: {
