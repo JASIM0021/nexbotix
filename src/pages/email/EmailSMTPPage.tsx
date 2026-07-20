@@ -1,6 +1,14 @@
 import { useState, useEffect } from 'react';
-import { Settings2, Wifi, WifiOff, Eye, EyeOff, Loader2, CheckCircle2, AlertCircle, HelpCircle, FileText, Upload, X, Code2, KeyRound } from 'lucide-react';
+import { Settings2, Wifi, WifiOff, Eye, EyeOff, Loader2, CheckCircle2, AlertCircle, HelpCircle, FileText, Upload, X, Code2, KeyRound, Mail, LogOut } from 'lucide-react';
 import { apiFetch, API_ENDPOINTS } from '@/config/api';
+
+interface GmailStatus {
+  isConnected: boolean;
+  email: string | null;
+  connectedAt: string | null;
+}
+
+const DEFAULT_GMAIL_STATUS: GmailStatus = { isConnected: false, email: null, connectedAt: null };
 
 interface SMTPConfig {
   id?: string;
@@ -40,8 +48,11 @@ export function EmailSMTPPage({ isPaid }: { isPaid: boolean }) {
   const [testing, setTesting] = useState(false);
   const [uploadingDeck, setUploadingDeck] = useState(false);
   const [msg, setMsg] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
+  const [gmailStatus, setGmailStatus] = useState<GmailStatus>(DEFAULT_GMAIL_STATUS);
+  const [connectingGmail, setConnectingGmail] = useState(false);
+  const [disconnectingGmail, setDisconnectingGmail] = useState(false);
 
-  useEffect(() => { if (isPaid) load(); }, [isPaid]);
+  useEffect(() => { if (isPaid) { load(); loadGmailStatus(); } }, [isPaid]);
 
   const load = async () => {
     try {
@@ -54,7 +65,9 @@ export function EmailSMTPPage({ isPaid }: { isPaid: boolean }) {
           signature: d.data.signature || '', deckURL: d.data.deckURL || '', deckName: d.data.deckName || '',
           autoAttachSignature: !!d.data.autoAttachSignature, autoAttachDeck: !!d.data.autoAttachDeck,
         }));
-        if (d.data.host === 'hostinger-api') {
+        if (d.data.provider === 'gmail') {
+          setPreset('google-oauth');
+        } else if (d.data.host === 'hostinger-api') {
           setPreset('hostinger');
         } else {
           const matching = Object.entries(PRESETS).find(([_, p]) => p.host === d.data.host && p.port === d.data.port);
@@ -65,8 +78,45 @@ export function EmailSMTPPage({ isPaid }: { isPaid: boolean }) {
     } catch { /* ignore */ }
   };
 
+  const loadGmailStatus = async () => {
+    try {
+      const r = await apiFetch(API_ENDPOINTS.email.gmailStatus);
+      const d = await r.json();
+      if (d.success && d.data) setGmailStatus(d.data);
+    } catch { /* ignore */ }
+  };
+
+  const connectGmail = async () => {
+    setConnectingGmail(true); setMsg(null);
+    try {
+      const r = await apiFetch(API_ENDPOINTS.email.gmailOAuthUrl);
+      const d = await r.json();
+      const url = d.data?.url || d.url;
+      if (url) {
+        window.location.href = url;
+      } else {
+        setMsg({ text: d.error || 'Failed to start Gmail connection', type: 'error' });
+        setConnectingGmail(false);
+      }
+    } catch {
+      setMsg({ text: 'Network error', type: 'error' });
+      setConnectingGmail(false);
+    }
+  };
+
+  const disconnectGmail = async () => {
+    setDisconnectingGmail(true); setMsg(null);
+    try {
+      await apiFetch(API_ENDPOINTS.email.gmailDisconnect, { method: 'POST' });
+      setGmailStatus(DEFAULT_GMAIL_STATUS);
+      setMsg({ text: 'Gmail disconnected', type: 'success' });
+    } catch { setMsg({ text: 'Network error', type: 'error' }); }
+    setDisconnectingGmail(false);
+  };
+
   const applyPreset = (key: string) => {
     setPreset(key);
+    if (key === 'google-oauth') return; // no host/port form for OAuth
     const p = PRESETS[key];
     setForm(f => ({ ...f, host: p.host, port: p.port, useTLS: p.useTLS }));
   };
@@ -89,8 +139,14 @@ export function EmailSMTPPage({ isPaid }: { isPaid: boolean }) {
   };
 
   const save = async () => {
-    let checkForm = { ...form };
-    if (preset === 'hostinger') {
+    let checkForm: typeof form & { provider?: string } = { ...form };
+    if (preset === 'google-oauth') {
+      if (!gmailStatus.isConnected) {
+        setMsg({ text: 'Connect your Gmail account first', type: 'error' });
+        return;
+      }
+      checkForm = { ...checkForm, provider: 'gmail', host: '', port: 0, username: '', password: '', useTLS: false, senderEmail: gmailStatus.email || checkForm.senderEmail };
+    } else if (preset === 'hostinger') {
       checkForm.host = 'hostinger-api';
       checkForm.port = 0;
       checkForm.useTLS = false;
@@ -121,8 +177,14 @@ export function EmailSMTPPage({ isPaid }: { isPaid: boolean }) {
   };
 
   const test = async () => {
-    let checkForm = { ...form };
-    if (preset === 'hostinger') {
+    let checkForm: typeof form & { provider?: string } = { ...form };
+    if (preset === 'google-oauth') {
+      if (!gmailStatus.isConnected) {
+        setMsg({ text: 'Connect your Gmail account first', type: 'error' });
+        return;
+      }
+      checkForm = { ...checkForm, provider: 'gmail' };
+    } else if (preset === 'hostinger') {
       checkForm.host = 'hostinger-api';
       checkForm.port = 0;
       checkForm.useTLS = false;
@@ -140,12 +202,12 @@ export function EmailSMTPPage({ isPaid }: { isPaid: boolean }) {
 
     setTesting(true); setMsg(null);
     try {
-      const r = await apiFetch(API_ENDPOINTS.email.smtpTest, { 
-        method: 'POST', 
+      const r = await apiFetch(API_ENDPOINTS.email.smtpTest, {
+        method: 'POST',
         body: JSON.stringify(checkForm)
       });
       const d = await r.json();
-      setMsg({ text: d.success ? (preset === 'hostinger' ? '✅ Connection successful! Hostinger API is working.' : '✅ Connection successful! SMTP is working.') : d.error, type: d.success ? 'success' : 'error' });
+      setMsg({ text: d.success ? (preset === 'google-oauth' ? '✅ Gmail is connected and working.' : preset === 'hostinger' ? '✅ Connection successful! Hostinger API is working.' : '✅ Connection successful! SMTP is working.') : d.error, type: d.success ? 'success' : 'error' });
       if (d.success && saved) setSaved({ ...saved, isVerified: true });
     } catch { setMsg({ text: 'Network error', type: 'error' }); }
     setTesting(false);
@@ -185,7 +247,17 @@ export function EmailSMTPPage({ isPaid }: { isPaid: boolean }) {
                 {v.label}
               </button>
             ))}
+            <button onClick={() => applyPreset('google-oauth')}
+              className={`px-3 py-1.5 text-sm rounded-lg border-2 font-medium transition-colors flex items-center gap-1.5 ${preset === 'google-oauth' ? 'border-blue-500 bg-blue-50 text-blue-700' : 'border-gray-200 text-gray-600 hover:border-gray-300'}`}>
+              <Mail size={14} />Google (OAuth)
+            </button>
           </div>
+          {preset === 'google-oauth' && (
+            <div className="mt-3 flex items-start gap-2 p-3 bg-blue-50 border border-blue-200 rounded-lg animate-in fade-in slide-in-from-top-1 duration-150">
+              <HelpCircle size={15} className="text-blue-600 mt-0.5 shrink-0" />
+              <p className="text-xs text-blue-800">Sign in with Google to send, browse the inbox, and summarize this mailbox — no app password needed.</p>
+            </div>
+          )}
           {preset === 'gmail' && (
             <div className="mt-3 flex items-start gap-2 p-3 bg-blue-50 border border-blue-200 rounded-lg animate-in fade-in slide-in-from-top-1 duration-150">
               <HelpCircle size={15} className="text-blue-600 mt-0.5 shrink-0" />
@@ -200,6 +272,37 @@ export function EmailSMTPPage({ isPaid }: { isPaid: boolean }) {
           )}
         </div>
 
+        {preset === 'google-oauth' ? (
+          <div className="border border-gray-200 rounded-xl p-6 text-center space-y-3">
+            {gmailStatus.isConnected ? (
+              <>
+                <div className="w-12 h-12 bg-green-50 rounded-full flex items-center justify-center mx-auto">
+                  <CheckCircle2 size={22} className="text-green-600" />
+                </div>
+                <p className="text-sm font-semibold text-gray-800">Connected as {gmailStatus.email}</p>
+                <p className="text-xs text-gray-400">Click Save Settings below to make Gmail the active mailbox for this channel.</p>
+                <button onClick={disconnectGmail} disabled={disconnectingGmail}
+                  className="inline-flex items-center gap-2 px-4 py-2 bg-gray-100 hover:bg-gray-200 disabled:opacity-50 text-gray-700 rounded-lg text-sm font-semibold transition-colors">
+                  {disconnectingGmail ? <Loader2 size={15} className="animate-spin" /> : <LogOut size={15} />}
+                  Disconnect Gmail
+                </button>
+              </>
+            ) : (
+              <>
+                <div className="w-12 h-12 bg-blue-50 rounded-full flex items-center justify-center mx-auto">
+                  <Mail size={22} className="text-blue-600" />
+                </div>
+                <p className="text-sm text-gray-600">Sign in with your Google account to connect Gmail.</p>
+                <button onClick={connectGmail} disabled={connectingGmail}
+                  className="inline-flex items-center gap-2 px-5 py-2.5 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white rounded-lg text-sm font-semibold transition-colors">
+                  {connectingGmail ? <Loader2 size={15} className="animate-spin" /> : <Mail size={15} />}
+                  Connect Gmail
+                </button>
+              </>
+            )}
+          </div>
+        ) : (
+        <>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           {preset !== 'hostinger' && (
             <>
@@ -265,6 +368,8 @@ export function EmailSMTPPage({ isPaid }: { isPaid: boolean }) {
             </div>
             <span className="text-sm text-gray-700">Use TLS (port 465) — leave off for STARTTLS (port 587)</span>
           </label>
+        )}
+        </>
         )}
 
         <div className="border-t border-gray-100 pt-5 space-y-4">

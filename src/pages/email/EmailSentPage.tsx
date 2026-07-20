@@ -7,13 +7,13 @@ interface SentEmailLog {
   to: string;
   subject: string;
   body: string;
-  provider: 'hostinger' | 'smtp';
+  provider: 'hostinger' | 'smtp' | 'gmail';
   source?: string; // "" (Email channel) | "leads_autopilot"
   sentAt: string;
 }
 
 interface HostingerSentMessage {
-  uid: number;
+  uid: string;
   subject: string;
   from: string;
   date: string;
@@ -39,6 +39,13 @@ const PAGE_SIZE = 20;
 const PROVIDER_STYLES: Record<string, string> = {
   hostinger: 'bg-indigo-50 text-indigo-700 border-indigo-200',
   smtp: 'bg-gray-50 text-gray-600 border-gray-200',
+  gmail: 'bg-red-50 text-red-700 border-red-200',
+};
+
+const PROVIDER_LABELS: Record<string, string> = {
+  hostinger: 'Hostinger',
+  smtp: 'SMTP',
+  gmail: 'Gmail',
 };
 
 export function EmailSentPage({ isPaid }: { isPaid: boolean }) {
@@ -47,12 +54,14 @@ export function EmailSentPage({ isPaid }: { isPaid: boolean }) {
   const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(false);
 
-  const [isHostinger, setIsHostinger] = useState(false);
+  const [crossCheckProvider, setCrossCheckProvider] = useState<'hostinger' | 'gmail' | null>(null);
   const [hostingerMessages, setHostingerMessages] = useState<HostingerSentMessage[]>([]);
   const [hostingerTotal, setHostingerTotal] = useState(0);
   const [hostingerPage, setHostingerPage] = useState(1);
   const [hostingerLoading, setHostingerLoading] = useState(false);
   const [showHostinger, setShowHostinger] = useState(false);
+  const [hostingerPageTokens, setHostingerPageTokens] = useState<Record<number, string>>({});
+  const [hostingerHasMore, setHostingerHasMore] = useState(false);
 
   const [viewer, setViewer] = useState<Viewer | null>(null);
   const [viewerBody, setViewerBody] = useState<MessageText | null>(null);
@@ -65,7 +74,8 @@ export function EmailSentPage({ isPaid }: { isPaid: boolean }) {
     try {
       const r = await apiFetch(API_ENDPOINTS.email.smtp);
       const d = await r.json();
-      if (d.success && d.data?.host === 'hostinger-api') setIsHostinger(true);
+      if (d.success && d.data?.provider === 'gmail') setCrossCheckProvider('gmail');
+      else if (d.success && d.data?.host === 'hostinger-api') setCrossCheckProvider('hostinger');
     } catch { /* ignore */ }
   };
 
@@ -86,12 +96,20 @@ export function EmailSentPage({ isPaid }: { isPaid: boolean }) {
   const loadHostinger = async (pageToLoad: number) => {
     setHostingerLoading(true);
     try {
-      const r = await apiFetch(`${API_ENDPOINTS.email.sentHostinger}?page=${pageToLoad}&perPage=${PAGE_SIZE}`);
+      const token = hostingerPageTokens[pageToLoad] || '';
+      const url = `${API_ENDPOINTS.email.sentHostinger}?page=${pageToLoad}&perPage=${PAGE_SIZE}${token ? `&pageToken=${encodeURIComponent(token)}` : ''}`;
+      const r = await apiFetch(url);
       const d = await r.json();
       if (d.success) {
         setHostingerMessages(prev => pageToLoad === 1 ? (d.data || []) : [...prev, ...(d.data || [])]);
         setHostingerTotal(d.total || 0);
         setHostingerPage(pageToLoad);
+        if (d.nextPageToken) {
+          setHostingerPageTokens(pt => ({ ...pt, [pageToLoad + 1]: d.nextPageToken }));
+          setHostingerHasMore(true);
+        } else {
+          setHostingerHasMore(false);
+        }
       }
     } catch { /* ignore */ }
     setHostingerLoading(false);
@@ -200,7 +218,7 @@ export function EmailSentPage({ isPaid }: { isPaid: boolean }) {
                   </h4>
                   <div className="flex items-center gap-1.5">
                     <span className={`inline-flex items-center px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wider rounded border ${PROVIDER_STYLES[log.provider] || PROVIDER_STYLES.smtp}`}>
-                      {log.provider === 'hostinger' ? 'Hostinger' : 'SMTP'}
+                      {PROVIDER_LABELS[log.provider] || 'SMTP'}
                     </span>
                     {log.source === 'leads_autopilot' && (
                       <span className="inline-flex items-center px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wider rounded border bg-amber-50 text-amber-700 border-amber-200">
@@ -219,12 +237,14 @@ export function EmailSentPage({ isPaid }: { isPaid: boolean }) {
             </div>
           )}
 
-          {isHostinger && (
+          {crossCheckProvider && (
             <div className="border-t border-gray-150">
               <button onClick={toggleHostinger} className="w-full flex items-center justify-between gap-2 p-4 bg-slate-50/50">
                 <div className="flex items-center gap-2 min-w-0">
                   <Mailbox size={14} className="text-indigo-600 shrink-0" />
-                  <span className="text-xs font-bold text-gray-900 truncate">From Hostinger Mailbox</span>
+                  <span className="text-xs font-bold text-gray-900 truncate">
+                    From {crossCheckProvider === 'gmail' ? 'Gmail Sent Folder' : 'Hostinger Mailbox'}
+                  </span>
                 </div>
                 <span className="text-xs text-blue-600 font-medium shrink-0">{showHostinger ? 'Hide' : 'Show'}</span>
               </button>
@@ -234,7 +254,7 @@ export function EmailSentPage({ isPaid }: { isPaid: boolean }) {
                   {hostingerLoading && !hostingerMessages.length ? (
                     <div className="text-center py-8"><Loader2 size={20} className="animate-spin mx-auto text-blue-500" /></div>
                   ) : hostingerMessages.length === 0 ? (
-                    <p className="text-center text-xs text-gray-400 py-6">No messages found in INBOX.Sent</p>
+                    <p className="text-center text-xs text-gray-400 py-6">No messages found</p>
                   ) : (
                     <>
                       {hostingerMessages.map(m => (
@@ -256,10 +276,10 @@ export function EmailSentPage({ isPaid }: { isPaid: boolean }) {
                           </h4>
                         </div>
                       ))}
-                      {hostingerMessages.length < hostingerTotal && (
+                      {(hostingerTotal > 0 ? hostingerMessages.length < hostingerTotal : hostingerHasMore) && (
                         <button onClick={() => loadHostinger(hostingerPage + 1)} disabled={hostingerLoading}
                           className="w-full py-2.5 text-xs font-medium text-blue-600 hover:bg-blue-50 transition-colors">
-                          {hostingerLoading ? 'Loading…' : `Load more (${hostingerMessages.length} of ${hostingerTotal})`}
+                          {hostingerLoading ? 'Loading…' : hostingerTotal > 0 ? `Load more (${hostingerMessages.length} of ${hostingerTotal})` : 'Load more'}
                         </button>
                       )}
                     </>

@@ -29,7 +29,7 @@ export function GmailCallbackPage() {
       .then(r => r.json())
       .then(data => {
         if (data.success) {
-          navigate('/email?tab=summarizer', { replace: true });
+          navigate('/email?tab=smtp', { replace: true });
         } else {
           setError(data.error || 'Failed to connect Gmail account.');
         }

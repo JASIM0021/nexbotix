@@ -1,11 +1,21 @@
 import { useState, useEffect } from 'react';
-import { Mail, Search, RefreshCw, ChevronLeft, ChevronRight, Inbox, Calendar, User, ArrowLeft, Loader2, Info, Bell, Plus, Trash2, X } from 'lucide-react';
+import { Mail, Search, RefreshCw, ChevronLeft, ChevronRight, Inbox, Calendar, User, ArrowLeft, Loader2, Info, Bell, Plus, Trash2, X, Sparkles, ChevronDown, ChevronUp } from 'lucide-react';
 import { apiFetch, API_ENDPOINTS } from '@/config/api';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/components/ui/Toast';
 
+interface InboxHighlights {
+  available: boolean;
+  overview?: string;
+  actionItems?: string[];
+  messageCount: number;
+  generatedAt?: string;
+}
+
+const browserTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+
 interface EmailMessage {
-  uid: number;
+  uid: string;
   subject: string;
   from: string;
   date: string;
@@ -30,7 +40,7 @@ interface EmailReminder {
 interface EmailMetadata {
   id: string;
   userId: string;
-  messageUid: number;
+  messageUid: string;
   priority: string;
   reminders: EmailReminder[];
   messageSubject: string;
@@ -44,12 +54,18 @@ export function EmailInboxPage({ isPaid }: { isPaid: boolean }) {
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [selectedUid, setSelectedUid] = useState<number | null>(null);
+  const [selectedUid, setSelectedUid] = useState<string | null>(null);
   const [messageText, setMessageText] = useState<MessageText | null>(null);
   const [loadingText, setLoadingText] = useState(false);
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState('');
   const perPage = 15;
+  const [pageTokens, setPageTokens] = useState<Record<number, string>>({});
+  const [hasMore, setHasMore] = useState(false);
+
+  const [highlights, setHighlights] = useState<InboxHighlights | null>(null);
+  const [highlightsLoading, setHighlightsLoading] = useState(false);
+  const [highlightsCollapsed, setHighlightsCollapsed] = useState(false);
 
   const [metadataList, setMetadataList] = useState<EmailMetadata[]>([]);
   const [showReminderModal, setShowReminderModal] = useState(false);
@@ -66,15 +82,35 @@ export function EmailInboxPage({ isPaid }: { isPaid: boolean }) {
     }
   }, [isPaid, page]);
 
+  useEffect(() => { if (isPaid) fetchHighlights(false); }, [isPaid]);
+
+  const fetchHighlights = async (force: boolean) => {
+    setHighlightsLoading(true);
+    try {
+      const r = await apiFetch(`${API_ENDPOINTS.email.inboxSummary}?tz=${encodeURIComponent(browserTimezone)}${force ? '&force=true' : ''}`);
+      const d = await r.json();
+      if (d.success) setHighlights(d.data);
+    } catch { /* ignore */ }
+    setHighlightsLoading(false);
+  };
+
   const fetchMessages = async () => {
     setLoading(true);
     setError(null);
     try {
-      const r = await apiFetch(`${API_ENDPOINTS.email.inbox}?page=${page}&perPage=${perPage}`);
+      const token = pageTokens[page] || '';
+      const url = `${API_ENDPOINTS.email.inbox}?page=${page}&perPage=${perPage}${token ? `&pageToken=${encodeURIComponent(token)}` : ''}`;
+      const r = await apiFetch(url);
       const d = await r.json();
       if (d.success) {
         setMessages(d.data || []);
         setTotal(d.total || 0);
+        if (d.nextPageToken) {
+          setPageTokens(pt => ({ ...pt, [page + 1]: d.nextPageToken }));
+          setHasMore(true);
+        } else {
+          setHasMore(false);
+        }
       } else {
         setError(d.error || 'Failed to fetch messages');
       }
@@ -84,7 +120,7 @@ export function EmailInboxPage({ isPaid }: { isPaid: boolean }) {
     setLoading(false);
   };
 
-  const fetchMessageBody = async (uid: number) => {
+  const fetchMessageBody = async (uid: string) => {
     setSelectedUid(uid);
     setLoadingText(true);
     setMessageText(null);
@@ -115,7 +151,7 @@ export function EmailInboxPage({ isPaid }: { isPaid: boolean }) {
     }
   };
 
-  const handleUpdateMetadata = async (uid: number, priority: string, reminders: EmailReminder[]) => {
+  const handleUpdateMetadata = async (uid: string, priority: string, reminders: EmailReminder[]) => {
     try {
       const msg = messages.find(m => m.uid === uid);
       const payload = {
@@ -124,7 +160,7 @@ export function EmailInboxPage({ isPaid }: { isPaid: boolean }) {
         messageSubject: msg?.subject || '',
         messageSender: msg?.from || '',
       };
-      const r = await apiFetch(API_ENDPOINTS.email.updateInboxMetadata(uid.toString()), {
+      const r = await apiFetch(API_ENDPOINTS.email.updateInboxMetadata(uid), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
@@ -230,10 +266,10 @@ export function EmailInboxPage({ isPaid }: { isPaid: boolean }) {
               <ChevronLeft size={14} />
             </button>
             <span className="text-xs text-gray-500 px-2 font-medium">
-              {Math.min(total, (page - 1) * perPage + 1)}-{Math.min(total, page * perPage)} of {total}
+              {total > 0 ? `${Math.min(total, (page - 1) * perPage + 1)}-${Math.min(total, page * perPage)} of ${total}` : `Page ${page}`}
             </span>
-            <button 
-              disabled={page * perPage >= total || loading}
+            <button
+              disabled={(total > 0 ? page * perPage >= total : !hasMore) || loading}
               onClick={() => setPage(p => p + 1)}
               className="p-1.5 border border-gray-200 rounded-lg text-gray-500 hover:bg-white disabled:opacity-40 transition-colors"
             >
@@ -242,6 +278,42 @@ export function EmailInboxPage({ isPaid }: { isPaid: boolean }) {
           </div>
         </div>
       </div>
+
+      {/* Today's summary banner — always on, independent of the Summarizer toggle */}
+      {highlights?.available && (
+        <div className="border-b border-gray-150 bg-indigo-50/60 px-4 py-3 text-left shrink-0">
+          <div className="flex items-center justify-between gap-2">
+            <button
+              onClick={() => setHighlightsCollapsed(c => !c)}
+              className="flex items-center gap-2 text-xs font-bold text-indigo-800 min-w-0"
+            >
+              <Sparkles size={14} className="text-indigo-600 shrink-0" />
+              <span className="truncate">Today's Summary ({highlights.messageCount})</span>
+              {highlightsCollapsed ? <ChevronDown size={13} /> : <ChevronUp size={13} />}
+            </button>
+            <button
+              onClick={() => fetchHighlights(true)}
+              disabled={highlightsLoading}
+              title="Refresh"
+              className="p-1 text-indigo-500 hover:text-indigo-700 hover:bg-indigo-100 rounded transition-colors shrink-0"
+            >
+              <RefreshCw size={12} className={highlightsLoading ? 'animate-spin' : ''} />
+            </button>
+          </div>
+          {!highlightsCollapsed && (
+            <div className="mt-2 space-y-2">
+              <p className="text-xs text-indigo-900 leading-relaxed">{highlights.overview}</p>
+              {!!highlights.actionItems?.length && (
+                <ul className="list-disc list-inside space-y-0.5">
+                  {highlights.actionItems.map((item, i) => (
+                    <li key={i} className="text-xs text-indigo-800">{item}</li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Main split-pane content */}
       <div className="flex-1 flex overflow-hidden min-h-0">
