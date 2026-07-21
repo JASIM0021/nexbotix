@@ -304,11 +304,41 @@ export function EmailInboxPage({ isPaid }: { isPaid: boolean }) {
             <div className="mt-2 space-y-2">
               <p className="text-xs text-indigo-900 leading-relaxed">{highlights.overview}</p>
               {!!highlights.actionItems?.length && (
-                <ul className="list-disc list-inside space-y-0.5">
-                  {highlights.actionItems.map((item, i) => (
-                    <li key={i} className="text-xs text-indigo-800">{item}</li>
-                  ))}
-                </ul>
+                <div className="mt-3 grid grid-cols-1 gap-2">
+                  {highlights.actionItems.map((item, i) => {
+                    const match = item.match(/(.+?)\s*\[uid:([^\]]+)\]$/);
+                    if (match) {
+                      const text = match[1];
+                      const uid = match[2];
+                      return (
+                        <div
+                          key={i}
+                          onClick={() => fetchMessageBody(uid)}
+                          className="flex items-center justify-between p-2.5 rounded-lg border border-indigo-100/50 bg-white/60 hover:bg-white hover:border-indigo-200 hover:shadow-sm transition-all duration-150 cursor-pointer group"
+                        >
+                          <div className="flex items-start gap-2.5 min-w-0">
+                            <span className="mt-1 flex-shrink-0 w-2 h-2 rounded-full bg-indigo-500 group-hover:scale-125 transition-transform"></span>
+                            <span className="text-xs text-indigo-950 font-medium group-hover:text-indigo-700 transition-colors leading-relaxed">
+                              {text}
+                            </span>
+                          </div>
+                          <span className="text-[10px] font-bold text-indigo-500/80 group-hover:text-indigo-600 bg-indigo-50/50 group-hover:bg-indigo-50 px-2 py-0.5 rounded-full border border-indigo-100/30 flex items-center gap-1 whitespace-nowrap ml-3 transition-all">
+                            Open Email ↗
+                          </span>
+                        </div>
+                      );
+                    }
+                    return (
+                      <div
+                        key={i}
+                        className="flex items-center gap-2.5 p-2 rounded-lg border border-transparent bg-indigo-50/30 text-xs text-indigo-800 leading-relaxed"
+                      >
+                        <span className="w-1.5 h-1.5 rounded-full bg-indigo-400 shrink-0"></span>
+                        <span>{item}</span>
+                      </div>
+                    );
+                  })}
+                </div>
               )}
             </div>
           )}

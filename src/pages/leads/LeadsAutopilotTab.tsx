@@ -5,6 +5,7 @@ import { apiFetch, API_ENDPOINTS } from '@/config/api';
 interface AutopilotConfig {
 	enabled: boolean;
 	timeOfDay: string;
+	timezone: string;
 	prompt: string;
 	outreachMode: string;
 	followupMode: string;
@@ -20,6 +21,7 @@ interface AutopilotConfig {
 const DEFAULT_CONFIG: AutopilotConfig = {
 	enabled: false,
 	timeOfDay: '10:00',
+	timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC',
 	prompt: 'Pitch our services professionally, keeping it concise (under 150 words) with a clear call-to-action to schedule a short 10-minute demo.',
 	outreachMode: 'autopilot',
 	followupMode: 'autopilot',
@@ -31,6 +33,72 @@ const DEFAULT_CONFIG: AutopilotConfig = {
 	followupInterval: '1_week',
 	followupPrompt: 'Politely refer back to our previous message, asking if they have had a chance to check it out. Offer to answer any initial questions.',
 };
+
+const TIMEZONES: string[] = (() => {
+	try {
+		return Intl.supportedValuesOf('timeZone');
+	} catch (e) {
+		return [
+			'UTC',
+			'Africa/Cairo',
+			'Africa/Johannesburg',
+			'Africa/Lagos',
+			'America/Anchorage',
+			'America/Argentina/Buenos_Aires',
+			'America/Bogota',
+			'America/Caracas',
+			'America/Chicago',
+			'America/Denver',
+			'America/Halifax',
+			'America/Los_Angeles',
+			'America/Mexico_City',
+			'America/New_York',
+			'America/Phoenix',
+			'America/Santiago',
+			'America/Sao_Paulo',
+			'America/St_Johns',
+			'Asia/Bangkok',
+			'Asia/Dubai',
+			'Asia/Hong_Kong',
+			'Asia/Jakarta',
+			'Asia/Jerusalem',
+			'Asia/Kabul',
+			'Asia/Karachi',
+			'Asia/Kolkata',
+			'Asia/Manila',
+			'Asia/Riyadh',
+			'Asia/Seoul',
+			'Asia/Shanghai',
+			'Asia/Singapore',
+			'Asia/Taipei',
+			'Asia/Tehran',
+			'Asia/Tokyo',
+			'Atlantic/Azores',
+			'Atlantic/Cape_Verde',
+			'Australia/Adelaide',
+			'Australia/Brisbane',
+			'Australia/Darwin',
+			'Australia/Melbourne',
+			'Australia/Perth',
+			'Australia/Sydney',
+			'Europe/Amsterdam',
+			'Europe/Athens',
+			'Europe/Berlin',
+			'Europe/Brussels',
+			'Europe/Dublin',
+			'Europe/Helsinki',
+			'Europe/Istanbul',
+			'Europe/London',
+			'Europe/Madrid',
+			'Europe/Moscow',
+			'Europe/Paris',
+			'Europe/Rome',
+			'Pacific/Auckland',
+			'Pacific/Fiji',
+			'Pacific/Honolulu',
+		];
+	}
+})();
 
 export function LeadsAutopilotTab() {
 	const [config, setConfig] = useState<AutopilotConfig>(DEFAULT_CONFIG);
@@ -51,6 +119,7 @@ export function LeadsAutopilotTab() {
 					setConfig({
 						enabled: data.enabled ?? false,
 						timeOfDay: data.timeOfDay || '10:00',
+						timezone: data.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC',
 						prompt: data.prompt || '',
 						outreachMode: data.outreachMode || 'autopilot',
 						followupMode: data.followupMode || 'autopilot',
@@ -301,10 +370,10 @@ export function LeadsAutopilotTab() {
 
 						{config.enabled && (
 							<div className="pt-2 space-y-4">
-								<div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+								<div className="grid grid-cols-1 md:grid-cols-3 gap-4">
 									<div>
 										<label className="block text-xs font-semibold text-slate-300 mb-1.5 flex items-center gap-1.5">
-											<Clock size={13} /> Time of Day (Server Time)
+											<Clock size={13} /> Time of Day
 										</label>
 										<input
 											type="time"
@@ -315,16 +384,31 @@ export function LeadsAutopilotTab() {
 									</div>
 
 									<div>
+										<label className="block text-xs font-semibold text-slate-300 mb-1.5 flex items-center gap-1.5">
+											<Globe size={13} /> Timezone
+										</label>
+										<select
+											value={config.timezone}
+											onChange={e => setConfig(prev => ({ ...prev, timezone: e.target.value }))}
+											className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2.5 text-xs text-white focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent transition-all"
+										>
+											{TIMEZONES.map(tz => (
+												<option key={tz} value={tz}>{tz}</option>
+											))}
+										</select>
+									</div>
+
+									<div>
 										<label className="block text-xs font-semibold text-slate-300 mb-1.5">
-											Outreach Option (Autopilot vs Co-pilot)
+											Outreach Option
 										</label>
 										<select
 											value={config.outreachMode}
 											onChange={e => setConfig(prev => ({ ...prev, outreachMode: e.target.value }))}
 											className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2.5 text-xs text-white focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent transition-all"
 										>
-											<option value="autopilot">Autopilot (Auto-generate &amp; send)</option>
-											<option value="copilot">Co-pilot (Save draft for review)</option>
+											<option value="autopilot">Autopilot (Auto-send)</option>
+											<option value="copilot">Co-pilot (Save draft)</option>
 										</select>
 									</div>
 								</div>

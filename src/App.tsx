@@ -44,6 +44,7 @@ function App() {
   const [currentMessages, setCurrentMessages] = useState<Message[]>([]);
   const [currentCampaignName, setCurrentCampaignName] = useState<string | undefined>(undefined);
   const [bgJobs, setBgJobs] = useState<BgJob[]>([]);
+  const [showProfileModal, setShowProfileModal] = useState(false);
 
   // Draggable panel divider
   const [panelWidth, setPanelWidth] = useState(58); // left panel % width
@@ -519,14 +520,18 @@ function App() {
             </button>
 
             {/* User avatar */}
-            <div className="flex items-center gap-2 shrink-0">
+            <button
+              onClick={() => setShowProfileModal(true)}
+              className="flex items-center gap-2 shrink-0 cursor-pointer hover:opacity-80 transition-opacity focus:outline-none"
+              title="View Profile"
+            >
               <div className="w-7 h-7 rounded-full bg-gray-900 flex items-center justify-center shrink-0">
                 <span className="text-[11px] font-bold text-white">
                   {user?.name?.charAt(0)?.toUpperCase() || <User size={12} className="text-white" />}
                 </span>
               </div>
               <span className="text-xs font-medium text-gray-700 max-w-[80px] truncate hidden lg:block">{user?.name?.split(' ')[0]}</span>
-            </div>
+            </button>
 
             {/* Logout */}
             <button
@@ -559,8 +564,9 @@ function App() {
                   {isWhatsAppConnected ? 'Connected' : 'Disconnected'}
                 </div>
                 <button
-                  onClick={() => setMobileTab('more')}
-                  className="w-8 h-8 rounded-full bg-gray-900 flex items-center justify-center"
+                  onClick={() => setShowProfileModal(true)}
+                  className="w-8 h-8 rounded-full bg-gray-900 flex items-center justify-center cursor-pointer hover:opacity-80 transition-opacity focus:outline-none"
+                  title="View Profile"
                 >
                   <span className="text-[11px] font-bold text-white">
                     {user?.name?.charAt(0)?.toUpperCase() || '?'}
