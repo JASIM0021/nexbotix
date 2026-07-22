@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { apiFetch, API_ENDPOINTS } from '@/config/api';
+import { ProfileModal } from '@/components/ProfileModal';
 import {
   Key, MessageSquare, Mail, Cpu, Code2, Copy, Check,
   LayoutDashboard, ChevronLeft, Plus, Trash2, LogOut,
@@ -46,6 +47,7 @@ export function DeveloperPage() {
   const [codeTab, setCodeTab] = useState<'curl' | 'js' | 'python'>('curl');
   const [emailCodeTab, setEmailCodeTab] = useState<'curl' | 'js' | 'python'>('curl');
   const [mcpClient, setMcpClient] = useState<'opencode' | 'claudecode' | 'claude' | 'cursor' | 'generic'>('opencode');
+  const [showProfileModal, setShowProfileModal] = useState(false);
 
   useEffect(() => {
     loadKeys();
@@ -930,12 +932,16 @@ Auth Header: X-API-Key: bsk_your_key`,
             </div>
           </div>
           <div className="flex items-center gap-3">
-            <div className="hidden sm:flex items-center gap-2">
-              <div className="w-7 h-7 rounded-full bg-gray-900 flex items-center justify-center text-white">
+            <button
+              onClick={() => setShowProfileModal(true)}
+              className="hidden sm:flex items-center gap-2 cursor-pointer hover:opacity-80 transition-opacity focus:outline-none"
+              title="View Profile"
+            >
+              <div className="w-7 h-7 rounded-full bg-gray-900 flex items-center justify-center text-white shrink-0">
                 <User size={14} />
               </div>
               <span className="text-sm font-medium text-gray-700">{user?.name}</span>
-            </div>
+            </button>
             <button onClick={() => { logout(); navigate('/'); }} className="p-2 rounded-lg text-gray-400 hover:text-red-600 hover:bg-red-50 transition-colors">
               <LogOut size={16} />
             </button>
@@ -984,6 +990,12 @@ Auth Header: X-API-Key: bsk_your_key`,
           </div>
         </main>
       </div>
+
+      <ProfileModal
+        isOpen={showProfileModal}
+        onClose={() => setShowProfileModal(false)}
+        user={user}
+      />
     </div>
   );
 }

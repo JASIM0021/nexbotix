@@ -18,6 +18,7 @@ const SVC_META = [
   { id: 'seo',          planMonthly: 'seo',      planYearly: 'seo_yr',      label: 'SEO Manager',     desc: 'Audit & health tracking',    colorBg: 'bg-violet-600',  icon: 'Search' },
   { id: 'seo_bot',      planMonthly: 'seo_bot',  planYearly: 'seo_bot_yr',  label: 'SEO AI Bot',      desc: 'AI blog & recommendations',  colorBg: 'bg-purple-600',  icon: 'Sparkles' },
   { id: 'leads',        planMonthly: 'leads',    planYearly: 'leads_yr',    label: 'Leads Manager',   desc: 'Scrape & enrich maps leads', colorBg: 'bg-amber-500',   icon: 'Sparkles' },
+  { id: 'life_companion', planMonthly: 'life_companion', planYearly: 'life_companion_yr', label: 'AI Life Companion', desc: 'Emotion, music & earn roadmaps', colorBg: 'bg-purple-600', icon: 'Sparkles' },
 ] as const;
 
 const COMBO_DEFS = [
@@ -25,13 +26,14 @@ const COMBO_DEFS = [
   { planId: 'social',   name: 'Social Suite',   services: ['whatsapp', 'facebook', 'linkedin'] as const,                                                                          savingsPct: '16%', highlight: false },
   { planId: 'growth',   name: 'Growth Pack',    services: ['whatsapp', 'email', 'linkedin', 'seo'] as const,                                                                      savingsPct: '25%', highlight: true  },
   { planId: 'business', name: 'Business Suite', services: ['whatsapp', 'whatsapp_bot', 'email', 'linkedin', 'linkedin_bot', 'seo'] as const,                                      savingsPct: '24%', highlight: false },
-  { planId: 'ultimate', name: 'Ultimate',       services: ['whatsapp', 'whatsapp_bot', 'chatbot', 'email', 'facebook', 'linkedin', 'linkedin_bot', 'seo', 'seo_bot', 'leads'] as const,   savingsPct: '33%', highlight: true  },
+  { planId: 'ultimate', name: 'Ultimate',       services: ['whatsapp', 'whatsapp_bot', 'chatbot', 'email', 'facebook', 'linkedin', 'linkedin_bot', 'seo', 'seo_bot', 'leads', 'life_companion'] as const,   savingsPct: '33%', highlight: true  },
 ];
 
 const SVC_TO_PLAN: Record<string, string> = {
   whatsapp: 'wa', whatsapp_bot: 'wa_bot', email: 'email',
   chatbot: 'chatbot', facebook: 'facebook', linkedin: 'li',
   linkedin_bot: 'li_bot', seo: 'seo', seo_bot: 'seo_bot', leads: 'leads',
+  life_companion: 'life_companion',
 };
 
 // Admin-registered features follow the "<key>" / "<key>_yr" plan convention,
@@ -48,6 +50,7 @@ const SVC_GROUPS = [
   { ids: ['linkedin', 'linkedin_bot'],  label: 'LinkedIn',        desc: 'Publisher + AI Bot',        colorBg: 'bg-blue-700',    icon: 'LI',            subLabels: ['Publisher', 'AI Bot'] },
   { ids: ['seo', 'seo_bot'],            label: 'SEO',             desc: 'Manager + AI Bot',          colorBg: 'bg-violet-600',  icon: 'Search',        subLabels: ['Manager', 'AI Bot'] },
   { ids: ['leads'],                     label: 'Leads Manager',   desc: 'Scrape & enrich local leads', colorBg: 'bg-amber-500',   icon: 'Sparkles',      subLabels: [] as string[] },
+  { ids: ['life_companion'],            label: 'AI Life & Growth Companion', desc: 'Emotion, music & earn roadmaps', colorBg: 'bg-purple-600', icon: 'Sparkles', subLabels: [] as string[] },
 ];
 
 type BestPlan = { planId: string; name: string; price: number; isExact: boolean; savingsPct: string | null; extras: string[] };

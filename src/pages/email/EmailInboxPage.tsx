@@ -124,6 +124,7 @@ export function EmailInboxPage({ isPaid }: { isPaid: boolean }) {
     setSelectedUid(uid);
     setLoadingText(true);
     setMessageText(null);
+    setHighlightsCollapsed(true);
     try {
       const r = await apiFetch(`${API_ENDPOINTS.email.inbox}/message/${uid}`);
       const d = await r.json();
@@ -279,32 +280,40 @@ export function EmailInboxPage({ isPaid }: { isPaid: boolean }) {
         </div>
       </div>
 
-      {/* Today's summary banner — always on, independent of the Summarizer toggle */}
+      {/* Today's summary banner — collapsible & compact */}
       {highlights?.available && (
-        <div className="border-b border-gray-150 bg-indigo-50/60 px-4 py-3 text-left shrink-0">
-          <div className="flex items-center justify-between gap-2">
-            <button
-              onClick={() => setHighlightsCollapsed(c => !c)}
-              className="flex items-center gap-2 text-xs font-bold text-indigo-800 min-w-0"
-            >
-              <Sparkles size={14} className="text-indigo-600 shrink-0" />
+        <div className="border-b border-indigo-100 bg-gradient-to-r from-indigo-50/80 via-purple-50/40 to-blue-50/50 px-4 py-2.5 text-left shrink-0 transition-all duration-200">
+          <div 
+            onClick={() => setHighlightsCollapsed(c => !c)}
+            className="flex items-center justify-between gap-2 cursor-pointer select-none group"
+          >
+            <div className="flex items-center gap-2 text-xs font-bold text-indigo-900 min-w-0">
+              <div className="w-5 h-5 rounded-md bg-indigo-600/10 flex items-center justify-center shrink-0 group-hover:bg-indigo-600/20 transition-colors">
+                <Sparkles size={13} className="text-indigo-600" />
+              </div>
               <span className="truncate">Today's Summary ({highlights.messageCount})</span>
-              {highlightsCollapsed ? <ChevronDown size={13} /> : <ChevronUp size={13} />}
-            </button>
+              <span className="text-[10px] font-normal text-indigo-500 bg-indigo-100/50 px-2 py-0.5 rounded-full border border-indigo-200/40 hidden sm:inline-block">
+                {highlightsCollapsed ? 'Click to expand' : 'Click to collapse'}
+              </span>
+              {highlightsCollapsed ? <ChevronDown size={14} className="text-indigo-600 shrink-0" /> : <ChevronUp size={14} className="text-indigo-600 shrink-0" />}
+            </div>
             <button
-              onClick={() => fetchHighlights(true)}
+              onClick={(e) => {
+                e.stopPropagation();
+                fetchHighlights(true);
+              }}
               disabled={highlightsLoading}
-              title="Refresh"
-              className="p-1 text-indigo-500 hover:text-indigo-700 hover:bg-indigo-100 rounded transition-colors shrink-0"
+              title="Refresh Summary"
+              className="p-1 text-indigo-500 hover:text-indigo-700 hover:bg-indigo-100/80 rounded-md transition-colors shrink-0"
             >
               <RefreshCw size={12} className={highlightsLoading ? 'animate-spin' : ''} />
             </button>
           </div>
           {!highlightsCollapsed && (
-            <div className="mt-2 space-y-2">
-              <p className="text-xs text-indigo-900 leading-relaxed">{highlights.overview}</p>
+            <div className="mt-2.5 pt-2 border-t border-indigo-100/60 space-y-2">
+              <p className="text-xs text-indigo-950 leading-relaxed font-normal">{highlights.overview}</p>
               {!!highlights.actionItems?.length && (
-                <div className="mt-3 grid grid-cols-1 gap-2">
+                <div className="mt-2 grid grid-cols-1 gap-1.5 max-h-48 overflow-y-auto pr-1 text-xs">
                   {highlights.actionItems.map((item, i) => {
                     const match = item.match(/(.+?)\s*\[uid:([^\]]+)\]$/);
                     if (match) {
@@ -314,15 +323,15 @@ export function EmailInboxPage({ isPaid }: { isPaid: boolean }) {
                         <div
                           key={i}
                           onClick={() => fetchMessageBody(uid)}
-                          className="flex items-center justify-between p-2.5 rounded-lg border border-indigo-100/50 bg-white/60 hover:bg-white hover:border-indigo-200 hover:shadow-sm transition-all duration-150 cursor-pointer group"
+                          className="flex items-center justify-between p-2 px-3 rounded-lg border border-indigo-100/60 bg-white/80 hover:bg-white hover:border-indigo-300 hover:shadow-xs transition-all duration-150 cursor-pointer group"
                         >
-                          <div className="flex items-start gap-2.5 min-w-0">
-                            <span className="mt-1 flex-shrink-0 w-2 h-2 rounded-full bg-indigo-500 group-hover:scale-125 transition-transform"></span>
-                            <span className="text-xs text-indigo-950 font-medium group-hover:text-indigo-700 transition-colors leading-relaxed">
+                          <div className="flex items-center gap-2.5 min-w-0">
+                            <span className="w-1.5 h-1.5 rounded-full bg-indigo-500 shrink-0 group-hover:scale-125 transition-transform"></span>
+                            <span className="text-xs text-indigo-950 font-medium group-hover:text-indigo-700 transition-colors truncate">
                               {text}
                             </span>
                           </div>
-                          <span className="text-[10px] font-bold text-indigo-500/80 group-hover:text-indigo-600 bg-indigo-50/50 group-hover:bg-indigo-50 px-2 py-0.5 rounded-full border border-indigo-100/30 flex items-center gap-1 whitespace-nowrap ml-3 transition-all">
+                          <span className="text-[10px] font-bold text-indigo-600 bg-indigo-50 group-hover:bg-indigo-100 px-2 py-0.5 rounded-md border border-indigo-200/50 flex items-center gap-1 whitespace-nowrap ml-3 transition-all shrink-0">
                             Open Email ↗
                           </span>
                         </div>
@@ -331,7 +340,7 @@ export function EmailInboxPage({ isPaid }: { isPaid: boolean }) {
                     return (
                       <div
                         key={i}
-                        className="flex items-center gap-2.5 p-2 rounded-lg border border-transparent bg-indigo-50/30 text-xs text-indigo-800 leading-relaxed"
+                        className="flex items-center gap-2 p-1.5 px-2.5 rounded-lg border border-transparent bg-indigo-50/40 text-xs text-indigo-900 leading-relaxed"
                       >
                         <span className="w-1.5 h-1.5 rounded-full bg-indigo-400 shrink-0"></span>
                         <span>{item}</span>

@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
-import { Smartphone, Mail, Globe, LogOut, Shield, Crown, ChevronRight, User, Lock, Bot, Sparkles, Search, Code2 } from 'lucide-react';
+import { Smartphone, Mail, Globe, LogOut, Shield, Crown, ChevronRight, User, Lock, Bot, Sparkles, Search, Code2, Compass } from 'lucide-react';
 import { apiFetch, API_ENDPOINTS } from '@/config/api';
+import { ProfileModal } from '@/components/ProfileModal';
 
 function FacebookIcon({ size = 32 }: { size?: number }) {
   return (
@@ -24,6 +25,7 @@ export function DashboardPage() {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const [stats, setStats] = useState<any>(null);
+  const [showProfileModal, setShowProfileModal] = useState(false);
 
   useEffect(() => {
     (async () => {
@@ -129,6 +131,18 @@ export function DashboardPage() {
       path: '/leads',
       dbId: 'leads',
     },
+    {
+      id: 'life-companion',
+      title: 'AI Life & Growth Companion',
+      description: 'Understand emotions & sadness, elevate mood with music, generate earning roadmaps, and verify tasks via AI.',
+      icon: <Compass size={32} className="text-purple-600" />,
+      bg: 'bg-purple-50',
+      border: 'border-purple-100',
+      hoverBorder: 'hover:border-purple-300',
+      iconBg: 'bg-purple-100',
+      path: '/life-companion',
+      dbId: 'life_companion',
+    },
   ];
 
   return (
@@ -161,12 +175,16 @@ export function DashboardPage() {
             <button onClick={() => navigate('/security')} title="Security Settings" className="p-2 rounded-lg text-gray-400 hover:text-slate-700 hover:bg-slate-100 transition-colors">
               <Lock size={18} />
             </button>
-            <div className="flex items-center gap-2 pl-1">
-              <div className="w-8 h-8 rounded-full bg-gray-900 flex items-center justify-center text-white shadow-md">
+            <button
+              onClick={() => setShowProfileModal(true)}
+              className="flex items-center gap-2 pl-1 cursor-pointer hover:opacity-80 transition-opacity focus:outline-none"
+              title="View Profile"
+            >
+              <div className="w-8 h-8 rounded-full bg-gray-900 flex items-center justify-center text-white shadow-md shrink-0">
                 <User size={16} />
               </div>
               <span className="text-sm font-semibold text-gray-800 hidden sm:block">{user?.name}</span>
-            </div>
+            </button>
             <button onClick={handleLogout} className="p-2 rounded-lg text-gray-400 hover:text-red-600 hover:bg-red-50 transition-colors">
               <LogOut size={18} />
             </button>
@@ -371,6 +389,12 @@ export function DashboardPage() {
           </div>
         </div>
       </main>
+
+      <ProfileModal
+        isOpen={showProfileModal}
+        onClose={() => setShowProfileModal(false)}
+        user={user}
+      />
     </div>
   );
 }

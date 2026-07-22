@@ -273,6 +273,12 @@ export const API_ENDPOINTS = {
   oauth: {
     approve: `${API_BASE_URL}/api/oauth/approve`,
   },
+  lifeCompanion: {
+    session: `${API_BASE_URL}/api/life-companion/session`,
+    history: `${API_BASE_URL}/api/life-companion/history`,
+    chat: `${API_BASE_URL}/api/life-companion/chat`,
+    verifyScreenshot: `${API_BASE_URL}/api/life-companion/verify-screenshot`,
+  },
 };
 
 /**

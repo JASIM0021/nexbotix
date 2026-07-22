@@ -19,6 +19,7 @@ import { SavedContactsDrawer } from '@/components/SavedContactsDrawer';
 import { WhatsAppContactsDrawer } from '@/components/WhatsAppContactsDrawer';
 import { ScheduledJobsDrawer } from '@/components/ScheduledJobsDrawer';
 import { BackgroundJobsPanel, BgJob } from '@/components/BackgroundJobsPanel';
+import { ProfileModal } from '@/components/ProfileModal';
 import './App.css';
 
 function App() {
@@ -1137,6 +1138,13 @@ function App() {
       >
         <HelpCircle size={22} />
       </button>
+
+      {/* Profile Modal */}
+      <ProfileModal
+        isOpen={showProfileModal}
+        onClose={() => setShowProfileModal(false)}
+        user={user}
+      />
 
       {/* ── Mobile Bottom Tab Bar ── */}
       <nav className="fixed bottom-0 left-0 right-0 z-40 md:hidden bg-white border-t border-gray-200 shadow-[0_-2px_12px_rgba(0,0,0,0.08)]">

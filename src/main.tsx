@@ -62,6 +62,7 @@ const DeveloperPage = lazy(() => import('./pages/DeveloperPage').then(m => ({ de
 const BlogPage = lazy(() => import('./pages/BlogPage'))
 const BlogPostPage = lazy(() => import('./pages/BlogPostPage'))
 const MCPOAuthApprovePage = lazy(() => import('./pages/MCPOAuthApprovePage').then(m => ({ default: m.MCPOAuthApprovePage })))
+const LifeCompanionPage = lazy(() => import('./pages/life_companion/LifeCompanionPage').then(m => ({ default: m.LifeCompanionPage })))
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { isAuthenticated, isLoading } = useAuth();
@@ -280,6 +281,15 @@ function AppRoutes() {
       {/* Developer Hub — API keys, REST docs, MCP docs */}
       <Route path="/developer" element={
         <ProtectedRoute><DeveloperPage /></ProtectedRoute>
+      } />
+
+      {/* AI Life Companion & Growth Accelerator */}
+      <Route path="/life-companion" element={
+        <ProtectedRoute>
+          <AppProvider>
+            <LifeCompanionPage />
+          </AppProvider>
+        </ProtectedRoute>
       } />
 
         {/* Catch-all */}
