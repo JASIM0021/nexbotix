@@ -15,9 +15,10 @@ function ScorePill({ score }: { score: number }) {
 }
 
 function IssueCounts({ issues }: { issues: SEOIssue[] }) {
-  const crit = issues.filter(i => i.severity === 'critical').length;
-  const warn = issues.filter(i => i.severity === 'warning').length;
-  const info = issues.filter(i => i.severity === 'info').length;
+  const safeIssues = issues || [];
+  const crit = safeIssues.filter(i => i.severity === 'critical').length;
+  const warn = safeIssues.filter(i => i.severity === 'warning').length;
+  const info = safeIssues.filter(i => i.severity === 'info').length;
   return (
     <div className="flex items-center gap-2 text-xs">
       {crit > 0 && <span className="flex items-center gap-0.5 text-red-500"><AlertCircle size={11} />{crit}</span>}
@@ -41,7 +42,16 @@ export function SEOPagesTab() {
     try {
       const res = await apiFetch(`${API_ENDPOINTS.seo.pages}?limit=${LIMIT}&offset=${off}`);
       const json = await res.json();
-      if (json.success) setData(json.data);
+      if (json.success && json.data) {
+        const normalized = {
+          ...json.data,
+          pages: (json.data.pages || []).map((page: any) => ({
+            ...page,
+            issues: page.issues || [],
+          })),
+        };
+        setData(normalized);
+      }
     } catch { /* ignore */ }
     finally { setLoading(false); }
   }, []);
@@ -166,10 +176,10 @@ export function SEOPagesTab() {
             ))}
           </div>
 
-          {selected.issues.length > 0 ? (
+          {(selected.issues || []).length > 0 ? (
             <div className="space-y-2">
               <p className="text-xs font-semibold text-gray-500 uppercase">Issues</p>
-              {selected.issues.map(iss => (
+              {(selected.issues || []).map(iss => (
                 <div key={iss.code} className={`flex items-start gap-2.5 p-3 rounded-xl border ${
                   iss.severity === 'critical' ? 'bg-red-50 border-red-100' :
                   iss.severity === 'warning' ? 'bg-amber-50 border-amber-100' :

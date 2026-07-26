@@ -3,6 +3,13 @@
 
 <head>
   <meta charset="UTF-8" />
+  <script>
+    // Automatically recover from Vite dynamic import chunk errors on deployments
+    window.addEventListener('vite:preloadError', (event) => {
+      console.warn('Vite preload error caught. Reloading page to load the latest build assets...', event);
+      window.location.reload();
+    });
+  </script>
   <link rel="icon" type="image/png" href="/icon-192.png" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta name="theme-color" content="#030712" />

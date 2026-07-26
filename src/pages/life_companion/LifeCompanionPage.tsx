@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Send, Sparkles, Heart, Quote, ArrowLeft, Mail, CheckCircle2,
-  ChevronRight, User, Compass, Play
+  ChevronRight, User, Compass, Play, TrendingUp, Trash2, AlertTriangle
 } from 'lucide-react';
 import { API_ENDPOINTS, apiFetch } from '../../config/api';
 import {
@@ -23,6 +23,10 @@ export function LifeCompanionPage() {
   const [isSending, setIsSending] = useState<boolean>(false);
   const [isVerifyingScreenshot, setIsVerifyingScreenshot] = useState<boolean>(false);
 
+  // Reset State
+  const [showResetModal, setShowResetModal] = useState<boolean>(false);
+  const [isResetting, setIsResetting] = useState<boolean>(false);
+
   // Profile Modal State
   const [showProfileModal, setShowProfileModal] = useState<boolean>(false);
   const [profileForm, setProfileForm] = useState<UserProfile>({
@@ -30,6 +34,23 @@ export function LifeCompanionPage() {
     age: 21,
     gender: 'boy',
   });
+
+  const handleResetAllChats = async () => {
+    setIsResetting(true);
+    try {
+      await apiFetch(API_ENDPOINTS.lifeCompanion.reset, { method: 'DELETE' });
+      setMessages([]);
+      setSession(null);
+      setQuote('');
+      setShowResetModal(false);
+      // Re-initialize session from scratch
+      loadSession();
+    } catch (err) {
+      console.error('Failed to reset companion session:', err);
+    } finally {
+      setIsResetting(false);
+    }
+  };
 
   // Full-Screen Typewriter Motivational Intro States
   const [showIntroOverlay, setShowIntroOverlay] = useState<boolean>(true);
@@ -140,18 +161,19 @@ export function LifeCompanionPage() {
   };
 
   // Handle Send Text Message
-  const handleSendMessage = async (customMessage?: string) => {
+  const handleSendMessage = async (customMessage?: string, replyToContext?: string) => {
     const textToSend = customMessage || inputText;
     if (!textToSend.trim() || isSending) return;
 
     setInputText('');
     setIsSending(true);
 
-    // Optimistic User Message
+    // Optimistic User Message with reply preview context
     const tempUserMsg: LifeCompanionChatMessage = {
       id: `temp_${Date.now()}`,
       sender: 'user',
       text: textToSend,
+      reply_to: replyToContext,
       created_at: new Date().toISOString(),
     };
     setMessages((prev) => [...prev, tempUserMsg]);
@@ -199,25 +221,30 @@ export function LifeCompanionPage() {
       });
       const data = await res.json();
       if (data.success && data.data) {
+        const isPassed = data.data.passed;
+        const bannerTitle = isPassed ? '🌟 **Assignment Verified!**' : '❌ **Assignment Needs Revision**';
+
         const feedbackMsg: LifeCompanionChatMessage = {
           id: `verify_${Date.now()}`,
           sender: 'ai',
-          text: `🌟 **Assignment Verified!**\n\n${data.data.feedback}`,
+          text: `${bannerTitle}\n\n${data.data.feedback}`,
           task: data.data.next_task,
-          action_type: 'chat',
-          passed: data.data.passed,
+          action_type: data.data.next_action as any,
+          passed: isPassed,
           created_at: new Date().toISOString(),
         };
         setMessages((prev) => [...prev, feedbackMsg]);
-        setSession((prev) =>
-          prev
-            ? {
-                ...prev,
-                next_action_state: 'completed_milestone_1',
-                current_task: data.data.next_task,
-              }
-            : prev
-        );
+
+        // Re-fetch active session to sync sticky header progress metrics & active task
+        try {
+          const sessRes = await apiFetch(API_ENDPOINTS.lifeCompanion.session);
+          const sessData = await sessRes.json();
+          if (sessData.success && sessData.data?.session) {
+            setSession(sessData.data.session);
+          }
+        } catch (sErr) {
+          console.error('Failed to sync session after verification:', sErr);
+        }
       }
     } catch (err) {
       console.error('Failed to verify screenshot:', err);
@@ -254,11 +281,21 @@ export function LifeCompanionPage() {
               <Quote className="w-16 h-16 sm:w-24 sm:h-24" />
             </div>
 
-            {/* FULL SCREEN MASSIVE FONT MOTIVATIONAL DISPLAY */}
-            <div className="min-h-[220px] sm:min-h-[320px] flex items-center justify-center px-4 w-full">
-              <h2 className="text-4xl sm:text-6xl md:text-7xl lg:text-8xl font-black tracking-tight leading-tight sm:leading-none text-transparent bg-clip-text bg-gradient-to-r from-white via-purple-100 to-indigo-200 drop-shadow-2xl">
+            {/* FULL SCREEN DYNAMIC FONT MOTIVATIONAL DISPLAY */}
+            <div className="min-h-[220px] sm:min-h-[300px] max-w-5xl flex items-center justify-center px-4 sm:px-8 w-full text-center">
+              <h2
+                className={`${
+                  typedText.length > 90
+                    ? 'text-xl sm:text-3xl md:text-4xl lg:text-5xl font-bold leading-relaxed'
+                    : typedText.length > 55
+                    ? 'text-2xl sm:text-4xl md:text-5xl lg:text-6xl font-extrabold leading-normal'
+                    : typedText.length > 30
+                    ? 'text-3xl sm:text-5xl md:text-6xl lg:text-7xl font-extrabold leading-tight'
+                    : 'text-4xl sm:text-6xl md:text-7xl lg:text-8xl font-black leading-none'
+                } tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-white via-purple-100 to-indigo-200 drop-shadow-2xl transition-all duration-300`}
+              >
                 {typedText}
-                <span className="inline-block w-3.5 sm:w-5 h-10 sm:h-16 ml-2 sm:ml-4 bg-purple-400 animate-pulse rounded-full align-middle" />
+                <span className="inline-block w-2.5 sm:w-4 h-8 sm:h-12 ml-2 bg-purple-400 animate-pulse rounded-full align-middle" />
               </h2>
             </div>
 
@@ -289,59 +326,106 @@ export function LifeCompanionPage() {
         </div>
       )}
 
-      {/* ── Top Header Navigation ──────────────────────────────────────────────── */}
-      <header className="sticky top-0 z-30 border-b border-purple-900/30 bg-slate-950/80 backdrop-blur-xl px-4 py-3 sm:px-6 flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <button
-            onClick={() => navigate('/app')}
-            className="p-2 rounded-xl bg-slate-900 text-slate-300 hover:text-white hover:bg-slate-800 border border-slate-800 transition-colors"
-            title="Back to Dashboard"
-          >
-            <ArrowLeft className="w-5 h-5" />
-          </button>
-          <div className="flex items-center gap-2.5">
-            <div className="p-2 rounded-xl bg-gradient-to-tr from-purple-600 to-indigo-600 text-white shadow-lg shadow-purple-500/25">
-              <Compass className="w-5 h-5 animate-spin-slow" />
-            </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <h1 className="text-base sm:text-lg font-bold text-white tracking-tight">AI Life Companion</h1>
-                <span className="text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-full bg-gradient-to-r from-purple-500 to-indigo-500 text-white shadow-sm">
-                  PRO GROWTH
-                </span>
+      {/* ── Top Header Navigation & Permanent AI Progress Tracker ─────────────── */}
+      <header className="sticky top-0 z-30 border-b border-purple-900/30 bg-slate-950/90 backdrop-blur-xl shadow-xl">
+        <div className="px-4 py-3 sm:px-6 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => navigate('/app')}
+              className="p-2 rounded-xl bg-slate-900 text-slate-300 hover:text-white hover:bg-slate-800 border border-slate-800 transition-colors"
+              title="Back to Dashboard"
+            >
+              <ArrowLeft className="w-5 h-5" />
+            </button>
+            <div className="flex items-center gap-2.5">
+              <div className="p-2 rounded-xl bg-gradient-to-tr from-purple-600 to-indigo-600 text-white shadow-lg shadow-purple-500/25">
+                <Compass className="w-5 h-5 animate-spin-slow" />
               </div>
-              <p className="text-[11px] text-purple-300/80">Life Understanding • Music Elevation • Earn Roadmaps</p>
+              <div>
+                <div className="flex items-center gap-2">
+                  <h1 className="text-base sm:text-lg font-bold text-white tracking-tight">AI Life Companion</h1>
+                  <span className="text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-full bg-gradient-to-r from-purple-500 to-indigo-500 text-white shadow-sm">
+                    PRO GROWTH
+                  </span>
+                </div>
+                <p className="text-[11px] text-purple-300/80">Life Understanding • Music Elevation • Earn Roadmaps</p>
+              </div>
             </div>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setShowResetModal(true)}
+              className="p-2 rounded-xl bg-rose-950/40 hover:bg-rose-900/40 border border-rose-500/30 text-rose-300 transition-all text-xs font-semibold flex items-center gap-1.5"
+              title="Clear All Chats & Reset Progress"
+            >
+              <Trash2 className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">Clear All Chats</span>
+            </button>
+
+            {quote && (
+              <button
+                onClick={replayIntro}
+                className="p-2 rounded-xl bg-purple-950/40 hover:bg-purple-900/40 border border-purple-500/30 text-purple-300 transition-all text-xs font-semibold flex items-center gap-1.5"
+                title="Replay Motivational Quote Intro"
+              >
+                <Play className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline">Replay Quote</span>
+              </button>
+            )}
+
+            {session?.profile?.name && (
+              <button
+                onClick={() => setShowProfileModal(true)}
+                className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-purple-950/40 hover:bg-purple-900/40 border border-purple-500/30 text-xs text-purple-200 transition-all"
+              >
+                <User className="w-3.5 h-3.5 text-purple-400" />
+                <span className="font-semibold">{session.profile.name}</span>
+                <span className="text-[10px] text-slate-400">({session.profile.gender})</span>
+              </button>
+            )}
           </div>
         </div>
 
-        <div className="flex items-center gap-2">
-          {quote && (
-            <button
-              onClick={replayIntro}
-              className="p-2 rounded-xl bg-purple-950/40 hover:bg-purple-900/40 border border-purple-500/30 text-purple-300 transition-all text-xs font-semibold flex items-center gap-1.5"
-              title="Replay Motivational Quote Intro"
-            >
-              <Play className="w-3.5 h-3.5" />
-              <span className="hidden sm:inline">Replay Quote</span>
-            </button>
-          )}
+        {/* Permanent Sticky AI Progress Tracker Dashboard Strip */}
+        <div className="border-t border-purple-900/30 bg-slate-900/90 px-4 py-2.5 sm:px-6">
+          <div className="max-w-4xl mx-auto flex flex-wrap items-center justify-between gap-2">
+            <div className="flex items-center gap-2">
+              <div className="p-1 rounded-lg bg-purple-500/20 text-purple-400 border border-purple-500/30">
+                <TrendingUp className="w-3.5 h-3.5" />
+              </div>
+              <span className="text-xs font-extrabold text-purple-200 tracking-wide">
+                {session?.milestone_name || `Milestone ${session?.current_milestone || 1}: Roadmap Execution`}
+              </span>
+              <span className="text-xs text-slate-400 hidden sm:inline">•</span>
+              <span className="text-xs text-purple-300 font-semibold truncate max-w-[180px] sm:max-w-xs">
+                {session?.current_task?.title ? `Task: ${session.current_task.title}` : 'Active Growth Track'}
+              </span>
+            </div>
 
-          {session?.profile?.name && (
-            <button
-              onClick={() => setShowProfileModal(true)}
-              className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-purple-950/40 hover:bg-purple-900/40 border border-purple-500/30 text-xs text-purple-200 transition-all"
-            >
-              <User className="w-3.5 h-3.5 text-purple-400" />
-              <span className="font-semibold">{session.profile.name}</span>
-              <span className="text-[10px] text-slate-400">({session.profile.gender})</span>
-            </button>
-          )}
+            <div className="flex items-center gap-3 w-full sm:w-auto justify-between sm:justify-end">
+              <span className="text-[11px] font-extrabold px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/40">
+                {session?.completed_tasks_count || 0} / {session?.total_tasks_count || 5} Verified
+              </span>
+              <div className="flex items-center gap-2 w-28 sm:w-36">
+                <div className="w-full bg-slate-950 rounded-full h-2 overflow-hidden p-0.5 border border-slate-800">
+                  <div
+                    className="bg-gradient-to-r from-purple-500 via-indigo-500 to-emerald-400 h-full rounded-full transition-all duration-700 shadow-md shadow-emerald-500/30"
+                    style={{ width: `${Math.max(session?.progress_percent || 0, 5)}%` }}
+                  />
+                </div>
+                <span className="text-xs font-black text-purple-200 shrink-0">
+                  {session?.progress_percent || 0}%
+                </span>
+              </div>
+            </div>
+          </div>
         </div>
       </header>
 
       {/* ── Main Interactive Content Container ──────────────────────────────────── */}
       <main className="flex-1 max-w-4xl w-full mx-auto p-3 sm:p-6 flex flex-col space-y-4">
+
         {/* Daily Motivational Quote Card Banner */}
         {quote && (
           <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-purple-950/60 via-slate-900 to-indigo-950/60 p-4 sm:p-5 border border-purple-500/25 shadow-lg">
@@ -418,6 +502,8 @@ export function LifeCompanionPage() {
                   className={`max-w-[88%] sm:max-w-[80%] rounded-2xl p-4 text-xs sm:text-sm leading-relaxed shadow-lg ${
                     msg.sender === 'user'
                       ? 'bg-gradient-to-r from-purple-600 to-indigo-600 text-white rounded-br-none'
+                      : msg.text.includes('❌')
+                      ? 'bg-rose-950/80 text-rose-100 border-2 border-rose-500/80 rounded-bl-none shadow-rose-900/30'
                       : 'bg-slate-800/90 text-slate-100 border border-slate-700/80 rounded-bl-none'
                   }`}
                 >
@@ -432,6 +518,16 @@ export function LifeCompanionPage() {
                     )}
                   </div>
 
+                  {/* Quote Reply Header (WhatsApp / Telegram style context preview) */}
+                  {msg.reply_to && (
+                    <div className="mb-2.5 p-2 rounded-xl bg-purple-950/80 border-l-4 border-purple-400 text-[11px] text-purple-200 shadow-inner">
+                      <span className="block text-[10px] font-extrabold text-purple-400 uppercase tracking-wider">
+                        Replying to:
+                      </span>
+                      <span className="font-semibold truncate block">{msg.reply_to}</span>
+                    </div>
+                  )}
+
                   {/* Text Content */}
                   <div className="whitespace-pre-wrap">{msg.text}</div>
 
@@ -444,14 +540,17 @@ export function LifeCompanionPage() {
                   {msg.task && (
                     <AssignmentVerificationCard
                       task={msg.task}
-                      onCompleteVideo={() => handleSendMessage('Yes, I have completed the video')}
+                      isLatest={session?.current_task?.id === msg.task.id}
+                      onCompleteVideo={() =>
+                        handleSendMessage('Yes, I have completed the video', msg.task?.title || 'Video Assignment')
+                      }
                       onUploadScreenshot={handleUploadScreenshot}
                       isSubmitting={isVerifyingScreenshot}
                     />
                   )}
 
-                  {/* Interactive Quick Actionable Options */}
-                  {msg.quick_options && msg.quick_options.length > 0 && (
+                  {/* Interactive Quick Actionable Options (Only enabled on the LATEST message) */}
+                  {idx === messages.length - 1 && msg.quick_options && msg.quick_options.length > 0 && (
                     <div className="mt-3.5 pt-3 border-t border-slate-700/60 space-y-2">
                       <p className="text-[11px] font-bold text-purple-300 uppercase tracking-wider flex items-center gap-1">
                         <Sparkles className="w-3.5 h-3.5 text-amber-400" />
@@ -461,7 +560,9 @@ export function LifeCompanionPage() {
                         {msg.quick_options.map((opt, optIdx) => (
                           <button
                             key={optIdx}
-                            onClick={() => handleSendMessage(opt)}
+                            onClick={() =>
+                              handleSendMessage(opt, msg.task?.title || msg.text.slice(0, 45))
+                            }
                             disabled={isSending}
                             className="text-xs px-3.5 py-2 rounded-xl bg-purple-950/80 hover:bg-purple-900 border border-purple-500/40 hover:border-purple-400 text-purple-100 hover:text-white transition-all shadow-md font-medium text-left flex items-center gap-1.5 transform hover:scale-[1.02] active:scale-95"
                           >
@@ -518,7 +619,7 @@ export function LifeCompanionPage() {
             /* Video Completion Action Card */
             <div className="p-4 rounded-2xl bg-gradient-to-r from-emerald-950 via-slate-900 to-teal-950 border border-emerald-500/40 shadow-2xl flex flex-col sm:flex-row items-center justify-between gap-3">
               <span className="text-xs sm:text-sm text-emerald-200 font-medium">
-                Finished watching your assigned Digital Marketing YouTube video?
+                Finished watching your assigned {session?.current_task?.category || 'learning'} video on "{session?.current_task?.title || 'Tutorial'}"?
               </span>
               <button
                 onClick={() => handleSendMessage('Yes, I completed the video')}
@@ -615,6 +716,45 @@ export function LifeCompanionPage() {
                 <ChevronRight className="w-4 h-4" />
               </button>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* ── Clear All Chats & Reset Confirmation Modal ──────────────────────── */}
+      {showResetModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-fade-in">
+          <div className="bg-slate-900 border border-rose-500/40 rounded-3xl p-6 max-w-md w-full shadow-2xl space-y-5">
+            <div className="flex items-center gap-3 text-rose-400">
+              <div className="p-3 rounded-2xl bg-rose-950 border border-rose-500/30">
+                <AlertTriangle className="w-7 h-7" />
+              </div>
+              <div>
+                <h3 className="text-lg font-bold text-white">Permanently Delete All Chats & Reset?</h3>
+                <p className="text-xs text-slate-400">This action cannot be undone.</p>
+              </div>
+            </div>
+
+            <p className="text-xs text-slate-300 leading-relaxed bg-rose-950/30 p-3.5 rounded-xl border border-rose-900/40">
+              Are you sure you want to permanently delete all past chat history, saved milestone progress, verified task submissions, and start completely fresh from scratch?
+            </p>
+
+            <div className="flex items-center justify-end gap-3 pt-2">
+              <button
+                onClick={() => setShowResetModal(false)}
+                disabled={isResetting}
+                className="px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-xs font-semibold text-slate-300 border border-slate-700 transition-all"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleResetAllChats}
+                disabled={isResetting}
+                className="px-5 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-500 text-xs font-extrabold text-white shadow-lg shadow-rose-600/30 transition-all flex items-center gap-2"
+              >
+                <Trash2 className="w-4 h-4" />
+                <span>{isResetting ? 'Deleting Everything...' : 'Yes, Delete Everything & Start Fresh'}</span>
+              </button>
+            </div>
           </div>
         </div>
       )}

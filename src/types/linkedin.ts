@@ -59,3 +59,16 @@ export interface CreateLinkedInPostPayload {
   imageUrl?: string;
   scheduledAt?: string;
 }
+
+export interface LinkedInPendingPost {
+  id: string;
+  userId: string;
+  text: string;
+  imageBase64?: string;
+  imageMime?: string;
+  imageUrl?: string;
+  token: string;
+  status: 'pending' | 'approved' | 'deleted' | 'expired';
+  expiresAt: string;
+  createdAt: string;
+}

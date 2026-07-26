@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Send, CalendarClock, LayoutGrid,
-  ArrowLeft, Crown, LogOut, User, Zap, MessageSquare, Mail, Menu, X, Link2, Facebook, Bot,
+  ArrowLeft, Crown, LogOut, User, Zap, MessageSquare, Mail, Menu, X, Link2, Facebook, Bot, Clock,
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useApp } from '@/contexts/AppContext';
@@ -12,8 +12,9 @@ import { LinkedInComposePage } from './LinkedInComposePage';
 import { LinkedInSchedulePage } from './LinkedInSchedulePage';
 import { LinkedInPostsPage } from './LinkedInPostsPage';
 import { LinkedInBotTab } from './LinkedInBotTab';
+import { LinkedInPendingPage } from './LinkedInPendingPage';
 
-type Tab = 'connect' | 'compose' | 'schedule' | 'posts' | 'bot';
+type Tab = 'connect' | 'compose' | 'schedule' | 'posts' | 'bot' | 'pending';
 
 function LinkedInIcon({ size = 20 }: { size?: number }) {
   return (
@@ -26,13 +27,19 @@ function LinkedInIcon({ size = 20 }: { size?: number }) {
 const NAV_ITEMS: { id: Tab; label: string; icon: React.ReactNode; desc: string }[] = [
   { id: 'connect',  label: 'Connect',   icon: <Link2 size={20} />,         desc: 'LinkedIn account' },
   { id: 'compose',  label: 'Compose',   icon: <Send size={20} />,          desc: 'Create post'      },
+  { id: 'pending',  label: 'Approvals', icon: <Clock size={20} />,         desc: 'Pending review'   },
   { id: 'schedule', label: 'Scheduled', icon: <CalendarClock size={20} />, desc: 'Queued posts'     },
   { id: 'posts',    label: 'Posts',     icon: <LayoutGrid size={20} />,    desc: 'Published feed'   },
   { id: 'bot',      label: 'Auto Bot',  icon: <Bot size={20} />,           desc: 'AI automation'    },
 ];
 
 const TAB_LABELS: Record<Tab, string> = {
-  connect: 'Connect Account', compose: 'Create Post', schedule: 'Scheduled Posts', posts: 'Published Posts', bot: 'Auto Bot',
+  connect: 'Connect Account',
+  compose: 'Create Post',
+  pending: 'Pending Approvals',
+  schedule: 'Scheduled Posts',
+  posts: 'Published Posts',
+  bot: 'Auto Bot',
 };
 
 export function LinkedInPage() {
@@ -239,6 +246,7 @@ export function LinkedInPage() {
         <div className="flex-1 overflow-y-auto p-3 sm:p-4 md:p-6 pb-20 md:pb-6">
           {tab === 'connect'  && <LinkedInConnectTab session={session} />}
           {tab === 'compose'  && <LinkedInComposePage isPaid={isPaid} session={session} onSwitchTab={setTab} />}
+          {tab === 'pending'  && <LinkedInPendingPage isPaid={isPaid} session={session} />}
           {tab === 'schedule' && <LinkedInSchedulePage isPaid={isPaid} session={session} />}
           {tab === 'posts'    && <LinkedInPostsPage isPaid={isPaid} session={session} />}
           {tab === 'bot'      && <LinkedInBotTab isPaid={hasLinkedInBot} session={session} />}

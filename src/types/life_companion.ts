@@ -32,11 +32,16 @@ export interface LifeCompanionSession {
   user_id: string;
   profile: UserProfile;
   current_emotion: string;
-  next_action_state: 'chat' | 'awaiting_email' | 'awaiting_video_completion' | 'awaiting_conceptual_answer' | 'awaiting_screenshot' | 'completed_milestone_1';
+  next_action_state: 'chat' | 'awaiting_email' | 'awaiting_video_completion' | 'awaiting_conceptual_answer' | 'awaiting_screenshot' | 'completed_milestone_1' | 'awaiting_track_switch_confirmation';
   email?: string;
   email_reminders_enabled?: boolean;
   music_recommendations?: MusicRecommendation[];
   current_task?: LearningTask;
+  completed_tasks_count?: number;
+  total_tasks_count?: number;
+  current_milestone?: number;
+  milestone_name?: string;
+  progress_percent?: number;
 }
 
 export interface LifeCompanionChatMessage {
@@ -50,6 +55,7 @@ export interface LifeCompanionChatMessage {
   task?: LearningTask;
   action_type?: 'chat' | 'email_input' | 'video_completion' | 'screenshot_input';
   quick_options?: string[];
+  reply_to?: string;
   screenshot_url?: string;
   feedback?: string;
   passed?: boolean;

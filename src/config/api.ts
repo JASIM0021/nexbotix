@@ -185,6 +185,16 @@ export const API_ENDPOINTS = {
     botRun:         `${API_BASE_URL}/api/linkedin/bot/run`,
     botSuggest:     `${API_BASE_URL}/api/linkedin/bot/suggest`,
     approveAction:  `${API_BASE_URL}/api/linkedin/approve-action`,
+    botPending:     `${API_BASE_URL}/api/linkedin/bot/pending`,
+  },
+  // ── Reddit (OAuth2 API) ───────────────────────────────────────────────
+  reddit: {
+    authUrl:        `${API_BASE_URL}/api/reddit/auth-url`,
+    disconnect:     `${API_BASE_URL}/api/reddit/disconnect`,
+    status:         `${API_BASE_URL}/api/reddit/status`,
+    posts:          `${API_BASE_URL}/api/reddit/posts`,
+    schedule:       `${API_BASE_URL}/api/reddit/schedule`,
+    logs:           `${API_BASE_URL}/api/reddit/logs`,
   },
   // ── SEO Extension ─────────────────────────────────────────────────────────
   seo: {
@@ -278,6 +288,7 @@ export const API_ENDPOINTS = {
     history: `${API_BASE_URL}/api/life-companion/history`,
     chat: `${API_BASE_URL}/api/life-companion/chat`,
     verifyScreenshot: `${API_BASE_URL}/api/life-companion/verify-screenshot`,
+    reset: `${API_BASE_URL}/api/life-companion/reset`,
   },
 };
 

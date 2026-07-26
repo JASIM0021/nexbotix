@@ -66,7 +66,7 @@ export function useBotxOnboarding() {
   // Open modal on mount when unauthenticated and not skipped this session
   useEffect(() => {
     if (isLoading) return;
-    if (sessionStorage.getItem(SKIP_KEY)) return;
+    if (localStorage.getItem(SKIP_KEY)) return;
 
     if (!isAuthenticated) {
       setIsOpen(true);
@@ -87,7 +87,7 @@ export function useBotxOnboarding() {
   // Register global re-open function for the homepage CTA
   useEffect(() => {
     (window as any).__botxOpenOnboarding = () => {
-      sessionStorage.removeItem(SKIP_KEY);
+      localStorage.removeItem(SKIP_KEY);
       setIsOpen(true);
       setMessages([{ role: 'bot', text: "Hi! 👋 What's your business name?" }]);
       setStep(1);
@@ -98,7 +98,7 @@ export function useBotxOnboarding() {
   }, []);
 
   const dismiss = useCallback(() => {
-    sessionStorage.setItem(SKIP_KEY, '1');
+    localStorage.setItem(SKIP_KEY, '1');
     setIsOpen(false);
   }, []);
 
@@ -175,7 +175,7 @@ export function useBotxOnboarding() {
   }, [draft.services, addBotMessage]);
 
   const open = useCallback(() => {
-    sessionStorage.removeItem(SKIP_KEY);
+    localStorage.removeItem(SKIP_KEY);
     setIsOpen(true);
     setMessages([{ role: 'bot', text: "Hi! 👋 What's your business name?" }]);
     setStep(1);

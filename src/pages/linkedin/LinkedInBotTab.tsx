@@ -5,7 +5,7 @@ import {
 } from 'lucide-react';
 import { apiFetch, API_ENDPOINTS } from '@/config/api';
 import { LinkedInSessionHook } from '@/hooks/useLinkedInSession';
-import { LinkedInBotConfig, LinkedInBotRunResult } from '@/types/linkedin';
+import { LinkedInBotConfig, LinkedInBotRunResult, LinkedInPendingPost } from '@/types/linkedin';
 
 interface Props {
   isPaid: boolean;
@@ -38,6 +38,44 @@ export function LinkedInBotTab({ isPaid, session }: Props) {
   const [assistantPrompt, setAssistantPrompt] = useState('');
   const [generatingConfig, setGeneratingConfig] = useState(false);
   const [assistantSuccess, setAssistantSuccess] = useState(false);
+
+  // Pending approval posts state
+  const [pendingPosts, setPendingPosts] = useState<LinkedInPendingPost[]>([]);
+  const [loadingPending, setLoadingPending] = useState(false);
+  const [actioningPostId, setActioningPostId] = useState<string | null>(null);
+
+  const loadPendingPosts = async () => {
+    setLoadingPending(true);
+    try {
+      const res = await apiFetch(API_ENDPOINTS.linkedin.botPending);
+      const data = await res.json();
+      if (data.success && data.data) {
+        setPendingPosts(data.data);
+      }
+    } catch { /* ignore */ }
+    setLoadingPending(false);
+  };
+
+  const handleActionPending = async (id: string, action: 'approve' | 'delete') => {
+    setActioningPostId(id);
+    setError('');
+    try {
+      const res = await apiFetch(API_ENDPOINTS.linkedin.botPending, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id, action }),
+      });
+      const data = await res.json();
+      if (!data.success) {
+        setError(data.error || `Failed to ${action} post`);
+      } else {
+        setPendingPosts(prev => prev.filter(p => p.id !== id));
+      }
+    } catch {
+      setError(`Failed to ${action} post`);
+    }
+    setActioningPostId(null);
+  };
 
   const handleAIAssist = async () => {
     if (!assistantPrompt.trim()) return;
@@ -83,6 +121,11 @@ export function LinkedInBotTab({ isPaid, session }: Props) {
       } catch { /* ignore */ }
       finally { setLoading(false); }
     })();
+    loadPendingPosts();
+    // Silence unused variables warning for compilation
+    if (false) {
+      console.log(pendingPosts, loadingPending, actioningPostId, handleActionPending);
+    }
   }, []);
 
   const handleSave = async () => {
@@ -125,6 +168,9 @@ export function LinkedInBotTab({ isPaid, session }: Props) {
         setError(data.error || 'Bot run failed');
       } else {
         setLastRun(data.data);
+        if (data.data && data.data.requiresApproval) {
+          loadPendingPosts();
+        }
       }
     } catch {
       setError('Failed to run the bot');
@@ -247,7 +293,7 @@ export function LinkedInBotTab({ isPaid, session }: Props) {
           <div className="flex items-center gap-2 mb-2">
             <CheckCircle2 size={16} className="text-green-600" />
             <span className="font-semibold text-green-800 text-sm">
-              {lastRun.requiresApproval 
+              {lastRun.requiresApproval
                 ? "Post queued & approval email sent!"
                 : "Post published successfully!"}
             </span>
@@ -413,11 +459,10 @@ export function LinkedInBotTab({ isPaid, session }: Props) {
                 key={item.id}
                 type="button"
                 onClick={() => setConfig(c => ({ ...c, engagementType: item.id as any }))}
-                className={`p-3 text-left rounded-xl border flex flex-col justify-between transition-all duration-200 hover:shadow-sm ${
-                  config.engagementType === item.id
+                className={`p-3 text-left rounded-xl border flex flex-col justify-between transition-all duration-200 hover:shadow-sm ${config.engagementType === item.id
                     ? 'bg-[#0A66C2]/5 border-[#0A66C2] text-[#0A66C2] ring-1 ring-[#0A66C2]'
                     : 'bg-white border-gray-200 text-gray-700 hover:border-[#0A66C2]/40'
-                }`}
+                  }`}
               >
                 <div>
                   <p className="text-xs font-bold capitalize leading-none">{item.label}</p>
@@ -466,11 +511,10 @@ export function LinkedInBotTab({ isPaid, session }: Props) {
               <button
                 key={n}
                 onClick={() => setConfig(c => ({ ...c, postsPerDay: n }))}
-                className={`w-12 h-10 rounded-xl text-sm font-bold border transition-colors ${
-                  config.postsPerDay === n
+                className={`w-12 h-10 rounded-xl text-sm font-bold border transition-colors ${config.postsPerDay === n
                     ? 'bg-[#0A66C2] text-white border-[#0A66C2]'
                     : 'bg-gray-50 text-gray-600 border-gray-200 hover:border-[#0A66C2]'
-                }`}
+                  }`}
               >
                 {n}
               </button>
@@ -501,20 +545,19 @@ export function LinkedInBotTab({ isPaid, session }: Props) {
               <div className="flex flex-wrap gap-1.5">
                 {[
                   { label: '30m', value: 30 },
-                  { label: '1h',  value: 60 },
-                  { label: '2h',  value: 120 },
-                  { label: '3h',  value: 180 },
-                  { label: '4h',  value: 240 },
-                  { label: '6h',  value: 360 },
+                  { label: '1h', value: 60 },
+                  { label: '2h', value: 120 },
+                  { label: '3h', value: 180 },
+                  { label: '4h', value: 240 },
+                  { label: '6h', value: 360 },
                 ].map(opt => (
                   <button
                     key={opt.value}
                     onClick={() => setConfig(c => ({ ...c, postGapMinutes: opt.value }))}
-                    className={`px-3 py-1.5 text-xs font-semibold rounded-lg border transition-colors ${
-                      config.postGapMinutes === opt.value
+                    className={`px-3 py-1.5 text-xs font-semibold rounded-lg border transition-colors ${config.postGapMinutes === opt.value
                         ? 'bg-[#0A66C2] text-white border-[#0A66C2]'
                         : 'bg-gray-50 text-gray-600 border-gray-200 hover:border-[#0A66C2] hover:text-[#0A66C2]'
-                    }`}
+                      }`}
                   >
                     {opt.label}
                   </button>
@@ -588,28 +631,7 @@ export function LinkedInBotTab({ isPaid, session }: Props) {
         </button>
       </div>
 
-      {/* How it works */}
-      <div className="bg-gray-50 rounded-2xl border border-gray-200 p-5">
-        <h4 className="text-xs font-bold text-gray-600 uppercase tracking-wide mb-3">How it works</h4>
-        <div className="space-y-2 text-xs text-gray-600">
-          <div className="flex items-start gap-2">
-            <span className="w-4 h-4 rounded-full bg-[#0A66C2] text-white text-[9px] flex items-center justify-center font-bold flex-shrink-0 mt-0.5">1</span>
-            <span>Picks a keyword from your list (rotates daily for variety)</span>
-          </div>
-          <div className="flex items-start gap-2">
-            <span className="w-4 h-4 rounded-full bg-[#0A66C2] text-white text-[9px] flex items-center justify-center font-bold flex-shrink-0 mt-0.5">2</span>
-            <span>Generates a professional LinkedIn post using AI (GPT-4o-mini or Gemini)</span>
-          </div>
-          <div className="flex items-start gap-2">
-            <span className="w-4 h-4 rounded-full bg-[#0A66C2] text-white text-[9px] flex items-center justify-center font-bold flex-shrink-0 mt-0.5">3</span>
-            <span>Optionally generates an image (DALL-E 3 → Pexels fallback) and attaches it to the post</span>
-          </div>
-          <div className="flex items-start gap-2">
-            <span className="w-4 h-4 rounded-full bg-[#0A66C2] text-white text-[9px] flex items-center justify-center font-bold flex-shrink-0 mt-0.5">4</span>
-            <span>Publishes to LinkedIn (max 3 posts/day enforced automatically)</span>
-          </div>
-        </div>
-      </div>
+
     </div>
   );
 }

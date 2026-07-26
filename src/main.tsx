@@ -109,6 +109,15 @@ function SetupGuard() {
   useEffect(() => {
     if (isLoading || setupLoading || !isAuthenticated) return;
 
+    // Skip/bypass setup wizard if the user visits the WhatsApp or Bot screens
+    if (
+      location.pathname.startsWith('/bot') ||
+      location.pathname.startsWith('/whatsapp')
+    ) {
+      localStorage.setItem('botx_setup_complete', '1');
+      return;
+    }
+
     const isExemptRoute =
       location.pathname.startsWith('/setup') ||
       location.pathname.startsWith('/login') ||
