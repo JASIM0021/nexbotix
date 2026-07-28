@@ -21,6 +21,14 @@ function LinkedInIcon({ size = 32 }: { size?: number }) {
   );
 }
 
+function RedditIcon({ size = 32 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="#FF4500">
+      <path d="M24 11.5c0-1.65-1.35-3-3-3-.96 0-1.86.48-2.42 1.24-1.64-1-3.85-1.64-6.29-1.72l1.37-4.31 4.5 1c.02.83.69 1.5 1.54 1.5 1.65 0 3-1.35 3-3s-1.35-3-3-3c-.83 0-1.57.34-2.11.9l-5.06-1.12c-.17-.04-.34.05-.39.22L6.8 9.02c-2.44.08-4.65.72-6.29 1.72C-.06 9.98-.96 9.5-1.92 9.5c-1.65 0-3 1.35-3 3 0 1.32.86 2.44 2.05 2.85-.03.22-.05.44-.05.65 0 3.86 4.49 7 10 7s10-3.14 10-7c0-.21-.02-.43-.05-.65 1.19-.41 2.05-1.53 2.05-2.85zM6 15c-.55 0-1-.45-1-1s.45-1 1-1 1 .45 1 1-.45 1-1 1zm8.8 2.2c-1.04 1.04-3.03 1.13-3.8 1.13-.77 0-2.76-.09-3.8-1.13-.1-.1-.1-.26 0-.36.1-.1.26-.1.36 0 .84.84 2.51.93 3.44.93.93 0 2.6-.09 3.44-.93.1-.1.26-.1.36 0 .1.1.1.26 0 .36zm-.8-3.2c-.55 0-1-.45-1-1s.45-1 1-1 1 .45 1 1-.45 1-1 1z" />
+    </svg>
+  );
+}
+
 export function DashboardPage() {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
@@ -106,6 +114,18 @@ export function DashboardPage() {
       iconBg: 'bg-sky-100',
       path: '/linkedin',
       dbId: 'linkedin',
+    },
+    {
+      id: 'reddit',
+      title: 'Reddit Workspace',
+      description: 'Publish text posts and schedule content directly to subreddits or your personal profile feed.',
+      icon: <RedditIcon size={32} />,
+      bg: 'bg-orange-50/50',
+      border: 'border-orange-100',
+      hoverBorder: 'hover:border-orange-400',
+      iconBg: 'bg-orange-100',
+      path: '/reddit',
+      dbId: 'reddit',
     },
     {
       id: 'seo',
@@ -250,6 +270,11 @@ export function DashboardPage() {
                       {service.id === 'linkedin' && (
                         <span className="text-[11px] font-bold text-sky-700 bg-sky-50 border border-sky-100 px-2 py-0.5 rounded-md">
                           {stats.linkedin.botEnabled ? '⏰ BOT ACTIVE' : '⏸️ BOT PAUSED'} • {stats.linkedin.totalPosts} POSTS
+                        </span>
+                      )}
+                      {service.id === 'reddit' && (
+                        <span className="text-[11px] font-bold text-orange-700 bg-orange-50 border border-orange-100 px-2 py-0.5 rounded-md">
+                          {stats.reddit?.isConnected ? '🟢 CONNECTED' : '🔴 DISCONNECTED'} • {stats.reddit?.totalPosts || 0} POSTS
                         </span>
                       )}
                       {service.id === 'seo' && (

@@ -54,6 +54,7 @@ const FacebookCallbackPage = lazy(() => import('./pages/facebook/FacebookCallbac
 const GmailCallbackPage = lazy(() => import('./pages/email/GmailCallbackPage').then(m => ({ default: m.GmailCallbackPage })))
 const LinkedInPage = lazy(() => import('./pages/linkedin/LinkedInPage').then(m => ({ default: m.LinkedInPage })))
 const LinkedInApprovePage = lazy(() => import('./pages/linkedin/LinkedInApprovePage').then(m => ({ default: m.LinkedInApprovePage })))
+const RedditPage = lazy(() => import('./pages/reddit/RedditPage').then(m => ({ default: m.RedditPage })))
 const SEOPage = lazy(() => import('./pages/seo/SEOPage').then(m => ({ default: m.SEOPage })))
 const SEOBlogCallbackPage = lazy(() => import('./pages/seo/SEOBlogCallbackPage').then(m => ({ default: m.SEOBlogCallbackPage })))
 const CampaignPage = lazy(() => import('@/pages/CampaignPage').then(m => ({ default: m.CampaignPage })))
@@ -257,6 +258,15 @@ function AppRoutes() {
         <ProtectedRoute>
           <AppProvider>
             <LinkedInPage />
+          </AppProvider>
+        </ProtectedRoute>
+      } />
+
+      {/* Reddit channel */}
+      <Route path="/reddit" element={
+        <ProtectedRoute>
+          <AppProvider>
+            <RedditPage />
           </AppProvider>
         </ProtectedRoute>
       } />
