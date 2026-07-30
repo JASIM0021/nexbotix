@@ -196,6 +196,16 @@ export const API_ENDPOINTS = {
     schedule:       `${API_BASE_URL}/api/reddit/schedule`,
     logs:           `${API_BASE_URL}/api/reddit/logs`,
   },
+  // ── Freelancer API ────────────────────────────────────────────────────
+  freelancer: {
+    credentials: `${API_BASE_URL}/api/freelancer/credentials`,
+    status:      `${API_BASE_URL}/api/freelancer/status`,
+    disconnect:  `${API_BASE_URL}/api/freelancer/disconnect`,
+    botConfig:   `${API_BASE_URL}/api/freelancer/bot/config`,
+    botRun:      `${API_BASE_URL}/api/freelancer/bot/run`,
+    botPending:  `${API_BASE_URL}/api/freelancer/bot/pending`,
+    botHistory:  `${API_BASE_URL}/api/freelancer/bot/history`,
+  },
   // ── SEO Extension ─────────────────────────────────────────────────────────
   seo: {
     config:     `${API_BASE_URL}/api/seo/config`,

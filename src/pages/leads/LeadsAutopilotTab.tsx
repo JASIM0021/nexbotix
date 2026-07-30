@@ -16,6 +16,7 @@ interface AutopilotConfig {
 	followupEnabled: boolean;
 	followupInterval: string;
 	followupPrompt: string;
+	maxFollowups: number;
 }
 
 const DEFAULT_CONFIG: AutopilotConfig = {
@@ -32,6 +33,7 @@ const DEFAULT_CONFIG: AutopilotConfig = {
 	followupEnabled: false,
 	followupInterval: '1_week',
 	followupPrompt: 'Politely refer back to our previous message, asking if they have had a chance to check it out. Offer to answer any initial questions.',
+	maxFollowups: 3,
 };
 
 const TIMEZONES: string[] = (() => {
@@ -130,6 +132,7 @@ export function LeadsAutopilotTab() {
 						followupEnabled: data.followupEnabled ?? false,
 						followupInterval: data.followupInterval || '1_week',
 						followupPrompt: data.followupPrompt || '',
+						maxFollowups: data.maxFollowups || 3,
 					});
 					setServicesText((data.senderServices || []).join(', '));
 					if (data.senderWebsite) {
@@ -463,6 +466,24 @@ export function LeadsAutopilotTab() {
 										<option value="1_week">Every 1 Week (7 days)</option>
 										<option value="2_weeks">Every 2 Weeks (14 days)</option>
 										<option value="1_month">Every Month (30 days)</option>
+									</select>
+								</div>
+
+								<div>
+									<label className="block text-xs font-semibold text-slate-300 mb-1.5">
+										Max Follow-ups per Lead
+									</label>
+									<select
+										value={config.maxFollowups}
+										onChange={e => setConfig(prev => ({ ...prev, maxFollowups: parseInt(e.target.value) || 3 }))}
+										className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2.5 text-xs text-white focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent transition-all"
+									>
+										<option value={1}>1 Follow-up</option>
+										<option value={2}>2 Follow-ups</option>
+										<option value={3}>3 Follow-ups</option>
+										<option value={4}>4 Follow-ups</option>
+										<option value={5}>5 Follow-ups</option>
+										<option value={10}>10 Follow-ups</option>
 									</select>
 								</div>
 

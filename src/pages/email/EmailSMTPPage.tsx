@@ -465,6 +465,50 @@ export function EmailSMTPPage({ isPaid }: { isPaid: boolean }) {
           </button>
         </div>
       </div>
+
+      {/* Inbox Delivery Tips */}
+      <div className="bg-gradient-to-br from-blue-50 to-indigo-50 border border-blue-100 rounded-xl p-6 space-y-4">
+        <div className="flex items-start gap-3">
+          <div className="p-2 bg-blue-500 rounded-lg text-white">
+            <AlertCircle size={18} />
+          </div>
+          <div>
+            <h3 className="font-bold text-gray-900 text-sm">Improve Your Email Inbox Delivery Rate</h3>
+            <p className="text-xs text-gray-600 mt-1">If your automated outreach emails or Autopilot pitches are landing in Spam, check these critical records on your domain registrar (GoDaddy, Namecheap, Cloudflare, etc.):</p>
+          </div>
+        </div>
+        
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-2">
+          <div className="bg-white p-4 rounded-lg border border-blue-100 shadow-sm">
+            <h4 className="font-bold text-gray-900 text-xs flex items-center gap-1.5">
+              <span className="w-2 h-2 rounded-full bg-blue-500" /> SPF Record
+            </h4>
+            <p className="text-[11px] text-gray-500 mt-1.5 leading-relaxed">
+              Tells mail servers that NexBotix and your email host are authorized to send mail from your domain. Add a TXT record:
+              <code className="block bg-gray-50 p-1.5 rounded border border-gray-100 font-mono text-[9px] mt-2 select-all overflow-x-auto">v=spf1 include:spf.hostinger.com ~all</code>
+            </p>
+          </div>
+
+          <div className="bg-white p-4 rounded-lg border border-blue-100 shadow-sm">
+            <h4 className="font-bold text-gray-900 text-xs flex items-center gap-1.5">
+              <span className="w-2 h-2 rounded-full bg-blue-500" /> DKIM Signature
+            </h4>
+            <p className="text-[11px] text-gray-500 mt-1.5 leading-relaxed">
+              Adds a digital signature to every email header, proving the mail wasn't modified in transit. Generate DKIM keys in your email provider panel and add the resulting TXT record to your DNS.
+            </p>
+          </div>
+
+          <div className="bg-white p-4 rounded-lg border border-blue-100 shadow-sm">
+            <h4 className="font-bold text-gray-900 text-xs flex items-center gap-1.5">
+              <span className="w-2 h-2 rounded-full bg-blue-500" /> DMARC Policy
+            </h4>
+            <p className="text-[11px] text-gray-500 mt-1.5 leading-relaxed">
+              Required by Gmail/Yahoo starting 2024 to verify SPF/DKIM alignment. Add a TXT record named <code className="inline bg-gray-50 px-1 py-0.5 rounded font-mono text-[10px]">_dmarc.yourdomain.com</code>:
+              <code className="block bg-gray-50 p-1.5 rounded border border-gray-100 font-mono text-[9px] mt-2 select-all overflow-x-auto">v=DMARC1; p=none; rua=mailto:dmarc@yourdomain.com</code>
+            </p>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }

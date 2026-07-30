@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
-import { Smartphone, Mail, Globe, LogOut, Shield, Crown, ChevronRight, User, Lock, Bot, Sparkles, Search, Code2, Compass } from 'lucide-react';
+import { Smartphone, Mail, Globe, LogOut, Shield, Crown, ChevronRight, User, Lock, Bot, Sparkles, Search, Code2, Compass, Briefcase } from 'lucide-react';
 import { apiFetch, API_ENDPOINTS } from '@/config/api';
 import { ProfileModal } from '@/components/ProfileModal';
 
@@ -126,6 +126,18 @@ export function DashboardPage() {
       iconBg: 'bg-orange-100',
       path: '/reddit',
       dbId: 'reddit',
+    },
+    {
+      id: 'freelancer',
+      title: 'Freelancer Auto-Bidder',
+      description: 'Automate project discovery and generate tailored winning AI proposals for Freelancer.com.',
+      icon: <Briefcase size={32} className="text-sky-600" />,
+      bg: 'bg-sky-50/50',
+      border: 'border-sky-100',
+      hoverBorder: 'hover:border-sky-400',
+      iconBg: 'bg-sky-100',
+      path: '/freelancer',
+      dbId: 'freelancer',
     },
     {
       id: 'seo',
@@ -275,6 +287,11 @@ export function DashboardPage() {
                       {service.id === 'reddit' && (
                         <span className="text-[11px] font-bold text-orange-700 bg-orange-50 border border-orange-100 px-2 py-0.5 rounded-md">
                           {stats.reddit?.isConnected ? '🟢 CONNECTED' : '🔴 DISCONNECTED'} • {stats.reddit?.totalPosts || 0} POSTS
+                        </span>
+                      )}
+                      {service.id === 'freelancer' && (
+                        <span className="text-[11px] font-bold text-sky-700 bg-sky-50 border border-sky-100 px-2 py-0.5 rounded-md">
+                          {stats.freelancer?.isConnected ? '🟢 CONNECTED' : '🔴 DISCONNECTED'} • {stats.freelancer?.totalBids || 0} BIDS
                         </span>
                       )}
                       {service.id === 'seo' && (

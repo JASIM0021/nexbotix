@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import {
-  Send, CalendarClock, LayoutGrid,
+  Send, CalendarClock, LayoutGrid, Loader2,
   ArrowLeft, Crown, LogOut, Zap, MessageSquare, Mail, Menu, X, Link2, Linkedin, Clock, Trash2, ExternalLink
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
@@ -224,9 +224,9 @@ export function RedditPage() {
         <div className="flex items-center justify-between px-3 py-2 bg-slate-800/40 rounded-xl">
           <div className="flex items-center gap-2 min-w-0">
             <div className="w-6 h-6 rounded-full bg-slate-700 flex items-center justify-center text-slate-300 font-bold text-xs uppercase flex-shrink-0">
-              {user?.username?.charAt(0) || 'U'}
+              {user?.email?.charAt(0) || 'U'}
             </div>
-            <span className="text-xs text-slate-300 font-semibold truncate">{user?.username || 'User'}</span>
+            <span className="text-xs text-slate-300 font-semibold truncate">{user?.email || 'User'}</span>
           </div>
           <button onClick={logout} className="text-slate-500 hover:text-red-400 transition-colors">
             <LogOut size={14} />

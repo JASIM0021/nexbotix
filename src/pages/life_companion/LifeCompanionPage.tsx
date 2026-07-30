@@ -1,8 +1,9 @@
 import { useState, useEffect, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import {
   Send, Sparkles, Heart, Quote, ArrowLeft, Mail, CheckCircle2,
-  ChevronRight, User, Compass, Play, TrendingUp, Trash2, AlertTriangle
+  ChevronRight, User, Compass, Play, TrendingUp, Trash2, AlertTriangle,
+  ExternalLink, Link2
 } from 'lucide-react';
 import { API_ENDPOINTS, apiFetch } from '../../config/api';
 import {
@@ -10,6 +11,91 @@ import {
 } from '../../types/life_companion';
 import { MusicRecommendationWidget } from '../../components/life_companion/MusicRecommendationWidget';
 import { AssignmentVerificationCard } from '../../components/life_companion/AssignmentVerificationCard';
+
+// Helper function to render text with Markdown links [Label](URL) and **bold** text
+const renderTextWithLinks = (text: string) => {
+  if (!text) return null;
+
+  const linkRegex = /\[([^\]]+)\]\(([^)]+)\)/g;
+  const parts: React.ReactNode[] = [];
+  let lastIndex = 0;
+  let match;
+
+  while ((match = linkRegex.exec(text)) !== null) {
+    const matchIndex = match.index;
+    const plainText = text.substring(lastIndex, matchIndex);
+    if (plainText) {
+      parts.push(renderBoldText(plainText));
+    }
+
+    const label = match[1];
+    const url = match[2];
+    const isLocal = url.startsWith('/');
+
+    if (isLocal) {
+      parts.push(
+        <Link
+          key={matchIndex}
+          to={url}
+          className="mx-1 px-2.5 py-1 rounded-lg bg-purple-950/60 hover:bg-purple-900 border border-purple-500/30 text-purple-300 hover:text-purple-200 font-bold inline-flex items-center gap-1 transition-all"
+        >
+          <Link2 className="w-3.5 h-3.5 text-purple-400" />
+          <span>{label}</span>
+        </Link>
+      );
+    } else {
+      parts.push(
+        <a
+          key={matchIndex}
+          href={url}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="mx-1 px-2.5 py-1 rounded-lg bg-emerald-950/60 hover:bg-emerald-900 border border-emerald-500/30 text-emerald-300 hover:text-emerald-200 font-bold inline-flex items-center gap-1 transition-all"
+        >
+          <ExternalLink className="w-3.5 h-3.5 text-emerald-400" />
+          <span>{label}</span>
+        </a>
+      );
+    }
+
+    lastIndex = linkRegex.lastIndex;
+  }
+
+  const remainingText = text.substring(lastIndex);
+  if (remainingText) {
+    parts.push(renderBoldText(remainingText));
+  }
+
+  return <div className="whitespace-pre-wrap leading-relaxed">{parts}</div>;
+};
+
+const renderBoldText = (txt: string) => {
+  const boldRegex = /\*\*([^*]+)\*\*/g;
+  const boldParts: React.ReactNode[] = [];
+  let lastIdx = 0;
+  let bMatch;
+
+  while ((bMatch = boldRegex.exec(txt)) !== null) {
+    const bIndex = bMatch.index;
+    const plain = txt.substring(lastIdx, bIndex);
+    if (plain) {
+      boldParts.push(plain);
+    }
+    boldParts.push(
+      <strong key={bIndex} className="font-extrabold text-white">
+        {bMatch[1]}
+      </strong>
+    );
+    lastIdx = boldRegex.lastIndex;
+  }
+
+  const remaining = txt.substring(lastIdx);
+  if (remaining) {
+    boldParts.push(remaining);
+  }
+
+  return <span key={txt}>{boldParts}</span>;
+};
 
 export function LifeCompanionPage() {
   const navigate = useNavigate();
@@ -529,7 +615,7 @@ export function LifeCompanionPage() {
                   )}
 
                   {/* Text Content */}
-                  <div className="whitespace-pre-wrap">{msg.text}</div>
+                  {renderTextWithLinks(msg.text)}
 
                   {/* Embedded Music Recommendations if present */}
                   {msg.music_recommendations && msg.music_recommendations.length > 0 && (
