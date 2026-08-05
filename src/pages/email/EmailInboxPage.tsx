@@ -152,6 +152,8 @@ export function EmailInboxPage({ isPaid }: { isPaid: boolean }) {
     }
   };
 
+  const [priorityFilter, setPriorityFilter] = useState<'all' | 'high' | 'medium' | 'low' | 'reminder'>('all');
+
   const handleUpdateMetadata = async (uid: string, priority: string, reminders: EmailReminder[]) => {
     try {
       const msg = messages.find(m => m.uid === uid);
@@ -183,11 +185,32 @@ export function EmailInboxPage({ isPaid }: { isPaid: boolean }) {
       showToast('Network error updating email metadata', 'error');
     }
   };
-  // Filter messages based on search query
-  const filteredMessages = messages.filter(m => 
-    m.subject.toLowerCase().includes(search.toLowerCase()) ||
-    m.from.toLowerCase().includes(search.toLowerCase())
-  );
+
+  // Compute counts for filter tabs
+  const highCount = messages.filter(m => metadataList.find(meta => meta.messageUid === m.uid)?.priority === 'high').length;
+  const mediumCount = messages.filter(m => metadataList.find(meta => meta.messageUid === m.uid)?.priority === 'medium').length;
+  const lowCount = messages.filter(m => metadataList.find(meta => meta.messageUid === m.uid)?.priority === 'low').length;
+  const reminderCount = messages.filter(m => {
+    const rems = metadataList.find(meta => meta.messageUid === m.uid)?.reminders;
+    return rems && rems.some(r => !r.sent);
+  }).length;
+
+  // Filter messages based on search query AND priority filter
+  const filteredMessages = messages.filter(m => {
+    const matchesSearch = 
+      m.subject.toLowerCase().includes(search.toLowerCase()) ||
+      m.from.toLowerCase().includes(search.toLowerCase());
+
+    if (!matchesSearch) return false;
+
+    const meta = metadataList.find(metaItem => metaItem.messageUid === m.uid);
+    if (priorityFilter === 'high') return meta?.priority === 'high';
+    if (priorityFilter === 'medium') return meta?.priority === 'medium';
+    if (priorityFilter === 'low') return meta?.priority === 'low';
+    if (priorityFilter === 'reminder') return meta?.reminders && meta.reminders.some(r => !r.sent);
+
+    return true;
+  });
 
   const selectedMsg = messages.find(m => m.uid === selectedUid);
   const msgMeta = metadataList.find(m => m.messageUid === selectedUid);
@@ -278,6 +301,67 @@ export function EmailInboxPage({ isPaid }: { isPaid: boolean }) {
             </button>
           </div>
         </div>
+      </div>
+
+      {/* Priority & Reminder Filter Bar */}
+      <div className="flex items-center gap-1.5 px-4 py-2 bg-slate-100/70 border-b border-gray-200 overflow-x-auto text-xs shrink-0 select-none">
+        <span className="text-[11px] font-bold text-gray-500 mr-1 uppercase tracking-wider shrink-0">
+          Priority Filter:
+        </span>
+        <button
+          onClick={() => setPriorityFilter('all')}
+          className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition-all shrink-0 ${
+            priorityFilter === 'all'
+              ? 'bg-slate-800 text-white shadow-sm font-bold'
+              : 'bg-white border border-gray-200 text-gray-600 hover:bg-gray-100'
+          }`}
+        >
+          All Messages ({total})
+        </button>
+        <button
+          onClick={() => setPriorityFilter('high')}
+          className={`px-2.5 py-1 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all shrink-0 ${
+            priorityFilter === 'high'
+              ? 'bg-rose-600 text-white shadow-sm ring-2 ring-rose-300 font-bold'
+              : 'bg-rose-50 border border-rose-200 text-rose-700 hover:bg-rose-100'
+          }`}
+        >
+          <span>🔥 High Priority</span>
+          {highCount > 0 && <span className="px-1.5 py-0.2 rounded-full bg-rose-200 text-rose-900 text-[10px] font-bold">{highCount}</span>}
+        </button>
+        <button
+          onClick={() => setPriorityFilter('medium')}
+          className={`px-2.5 py-1 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all shrink-0 ${
+            priorityFilter === 'medium'
+              ? 'bg-amber-500 text-white shadow-sm ring-2 ring-amber-300 font-bold'
+              : 'bg-amber-50 border border-amber-200 text-amber-800 hover:bg-amber-100'
+          }`}
+        >
+          <span>⚡ Medium</span>
+          {mediumCount > 0 && <span className="px-1.5 py-0.2 rounded-full bg-amber-200 text-amber-900 text-[10px] font-bold">{mediumCount}</span>}
+        </button>
+        <button
+          onClick={() => setPriorityFilter('low')}
+          className={`px-2.5 py-1 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all shrink-0 ${
+            priorityFilter === 'low'
+              ? 'bg-emerald-600 text-white shadow-sm font-bold'
+              : 'bg-emerald-50 border border-emerald-200 text-emerald-800 hover:bg-emerald-100'
+          }`}
+        >
+          <span>💤 Low</span>
+          {lowCount > 0 && <span className="px-1.5 py-0.2 rounded-full bg-emerald-200 text-emerald-900 text-[10px] font-bold">{lowCount}</span>}
+        </button>
+        <button
+          onClick={() => setPriorityFilter('reminder')}
+          className={`px-2.5 py-1 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all shrink-0 ${
+            priorityFilter === 'reminder'
+              ? 'bg-indigo-600 text-white shadow-sm ring-2 ring-indigo-300 font-bold'
+              : 'bg-indigo-50 border border-indigo-200 text-indigo-800 hover:bg-indigo-100'
+          }`}
+        >
+          <span>⏰ Active Reminders</span>
+          {reminderCount > 0 && <span className="px-1.5 py-0.2 rounded-full bg-indigo-200 text-indigo-900 text-[10px] font-bold">{reminderCount}</span>}
+        </button>
       </div>
 
       {/* Today's summary banner — collapsible & compact */}
@@ -373,17 +457,29 @@ export function EmailInboxPage({ isPaid }: { isPaid: boolean }) {
           ) : (
             filteredMessages.map(msg => {
               const msgMeta = metadataList.find(m => m.messageUid === msg.uid);
+              const isHigh = msgMeta?.priority === 'high';
+              const isMedium = msgMeta?.priority === 'medium';
+              const isLow = msgMeta?.priority === 'low';
+              const activeReminder = msgMeta?.reminders?.find(r => !r.sent);
+
+              let itemStyle = 'hover:bg-slate-50 border-l-4 border-transparent';
+              if (selectedUid === msg.uid) {
+                itemStyle = 'bg-blue-50/70 border-l-4 border-blue-500 shadow-sm';
+              } else if (isHigh) {
+                itemStyle = 'bg-rose-50/40 border-l-4 border-rose-500 hover:bg-rose-50/70';
+              } else if (isMedium) {
+                itemStyle = 'bg-amber-50/30 border-l-4 border-amber-400 hover:bg-amber-50/50';
+              } else if (activeReminder) {
+                itemStyle = 'bg-indigo-50/30 border-l-4 border-indigo-400 hover:bg-indigo-50/50';
+              }
+
               return (
                 <div 
                   key={msg.uid}
                   onClick={() => fetchMessageBody(msg.uid)}
-                  className={`p-4 cursor-pointer transition-colors relative text-left ${
-                    selectedUid === msg.uid 
-                      ? 'bg-blue-50/70 border-l-4 border-blue-500' 
-                      : 'hover:bg-slate-50 border-l-4 border-transparent'
-                  } ${!msg.seen ? 'bg-slate-50/30' : ''}`}
+                  className={`p-3.5 cursor-pointer transition-colors relative text-left ${itemStyle} ${!msg.seen ? 'bg-slate-50/40' : ''}`}
                 >
-                  <div className="flex justify-between items-start gap-2 mb-1.5">
+                  <div className="flex justify-between items-start gap-2 mb-1">
                     <span className={`text-xs truncate ${!msg.seen ? 'font-bold text-gray-900' : 'text-gray-600 font-medium'}`}>
                       {msg.from}
                     </span>
@@ -397,25 +493,25 @@ export function EmailInboxPage({ isPaid }: { isPaid: boolean }) {
                   <div className="flex justify-between items-center text-[10px] text-gray-400 gap-2">
                     <div className="flex items-center gap-1.5 flex-wrap min-w-0">
                       <span>{(msg.size / 1024).toFixed(1)} KB</span>
-                      {msgMeta?.priority === 'high' && (
-                        <span className="px-1.5 py-0.5 rounded bg-rose-50 text-rose-600 border border-rose-100 font-semibold text-[9px] uppercase tracking-wider shrink-0">
-                          High
+                      {isHigh && (
+                        <span className="px-2 py-0.5 rounded bg-rose-600 text-white font-bold text-[9px] uppercase tracking-wide shrink-0 shadow-sm">
+                          🔥 High Priority
                         </span>
                       )}
-                      {msgMeta?.priority === 'medium' && (
-                        <span className="px-1.5 py-0.5 rounded bg-amber-50 text-amber-600 border border-amber-100 font-semibold text-[9px] uppercase tracking-wider shrink-0">
-                          Medium
+                      {isMedium && (
+                        <span className="px-1.5 py-0.5 rounded bg-amber-100 text-amber-800 border border-amber-200 font-bold text-[9px] uppercase tracking-wider shrink-0">
+                          ⚡ Medium
                         </span>
                       )}
-                      {msgMeta?.priority === 'low' && (
-                        <span className="px-1.5 py-0.5 rounded bg-emerald-50 text-emerald-600 border border-emerald-100 font-semibold text-[9px] uppercase tracking-wider shrink-0">
-                          Low
+                      {isLow && (
+                        <span className="px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-800 border border-emerald-200 font-bold text-[9px] uppercase tracking-wider shrink-0">
+                          💤 Low
                         </span>
                       )}
-                      {msgMeta?.reminders && msgMeta.reminders.some(r => !r.sent) && (
-                        <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded bg-indigo-50 text-indigo-600 border border-indigo-100 font-semibold text-[9px] shrink-0">
-                          <Bell size={8} />
-                          Reminder
+                      {activeReminder && (
+                        <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-indigo-100 text-indigo-800 border border-indigo-200 font-bold text-[9px] shrink-0">
+                          <Bell size={9} className="text-indigo-600 animate-pulse" />
+                          <span>Reminder: {new Date(activeReminder.time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
                         </span>
                       )}
                     </div>

@@ -371,6 +371,14 @@ export function LeadsAutopilotTab() {
 							When active, the AI pilot will run daily to write and send personalized pitch emails to newly collected leads that have not been contacted.
 						</p>
 
+						{/* Industry Auto-Analysis Feature Banner */}
+						<div className="bg-amber-950/30 border border-amber-800/50 rounded-xl p-3.5 flex gap-3 text-xs text-amber-200/90 leading-relaxed">
+							<Sparkles size={16} className="text-amber-400 shrink-0 mt-0.5" />
+							<div>
+								<span className="font-bold text-amber-300">Smart Industry Auto-Pitching Active:</span> AI dynamically detects each lead's industry category (e.g. Restaurant, Real Estate, Dental/Clinic, E-commerce, Gym, Law Firm) and automatically customizes your cold email solution (e.g. pitching Restaurant Management / POS to restaurants, Real Estate CRM / Lead bots to realtors, Patient Booking to clinics).
+							</div>
+						</div>
+
 						{config.enabled && (
 							<div className="pt-2 space-y-4">
 								<div className="grid grid-cols-1 md:grid-cols-3 gap-4">

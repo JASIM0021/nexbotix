@@ -323,9 +323,16 @@ export function MessageComposer({
               rows={4}
               maxLength={1000}
             />
-            <div className="flex justify-between mt-1">
+            <div className="flex flex-col sm:flex-row justify-between gap-1 mt-1">
               {index === 0 && (
-                <p className="text-xs text-gray-500">Messages will be sent with 3-5 second delays between each</p>
+                <div className="space-y-1">
+                  <p className="text-xs text-gray-600 flex items-center gap-1">
+                    <span className="font-medium text-blue-600">Anti-Ban Spintax:</span> Use <code className="bg-blue-50 text-blue-700 px-1 py-0.5 rounded font-mono text-[11px]">{'{Hi|Hello|Hey}'}</code> for random variation.
+                  </p>
+                  <p className="text-xs text-emerald-700 font-medium">
+                    Tip: Include "Reply STOP to opt out" so unhappy recipients don't report your account.
+                  </p>
+                </div>
               )}
               <p className={`text-xs ml-auto ${set.text.length > 900 ? 'text-red-600' : 'text-gray-500'}`}>
                 {set.text.length} / 1000
